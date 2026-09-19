@@ -157,6 +157,11 @@ card.mount("#mount");   // #mount 里需要有一个承载容器元素
 | **纯 HTML 集成示例** | `npm run build` 后直接双击 `examples/plain-html/index.html` | 最小接入示例（IIFE + `<link>`/`<script>`），含 4 个生命周期按钮 |
 | **量化验收** | `npm run acceptance` | 89 项真实 Chrome 检查 + 截图 → `acceptance-artifacts/`（含 16 项曝光审计、dev 工作流回归与基线指纹） |
 
+## 交给站点开发代理的接入提示词
+
+`docs/INTEGRATION-PROMPT.md` 是一份可以直接复制给网站开发会话的提示词：包含仓库地址、本机构建路径、
+硬性约束（不重复造轮子、不移植 Demo 控件）、接入步骤与代码片段、冻结的公开接口速查、以及逐条验收清单。
+
 ## 移植到 WordPress
 
 本项目**当前阶段不开发** WooCommerce 适配器插件，只提供构件与移植指引。整体思路是：
