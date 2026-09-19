@@ -1,0 +1,48 @@
+<!doctype html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+    <meta name="color-scheme" content="light" />
+    <meta name="robots" content="noindex, nofollow" />
+    <!-- 内联 data: URI 图标：不引入额外文件、不依赖 CDN（同时避免 /favicon.ico 404） -->
+    <link
+      rel="icon"
+      href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='6' fill='%23059669'/%3E%3Crect x='4' y='12' width='24' height='4' fill='%23ECFDF5'/%3E%3C/svg%3E"
+    />
+    <title>Bank Card Showcase · 组件演示（临时占位卡面）</title>
+    <meta
+      name="description"
+      content="银行卡式商品展示组件的演示页：临时占位卡面，用于验证卡面比例、特效切换、响应式布局与生命周期，不含购物车 / 订单 / 支付。"
+    />
+  </head>
+  <body class="bc-demo-body">
+    <main class="bc-demo">
+      <header class="bc-demo__header">
+        <h1 class="bc-demo__title">Bank Card Showcase · 组件演示</h1>
+        <p class="bc-demo__badge">演示卡面：商品 A 为临时占位图，商品 B 为项目提供素材</p>
+        <p class="bc-demo__lead">
+          演示银行卡式商品展示容器：卡面（3D 倾斜 / 箔效果）与商品信息在桌面端左右排列、窄屏上下堆叠。价格与库存
+          均为模拟文案，按钮只做前端回调演示，未接入购物车 / 订单 / 支付。商品 A 使用可复现生成的临时占位卡面，
+          商品 B 使用项目提供的卡面素材（低多边形熊猫）；上线前请统一替换为自制、拥有合法权利的正式卡面。
+        </p>
+      </header>
+
+      <!-- 商品展示容器挂载点（由 src/demo/main.ts 创建 createProductShowcase 后挂入） -->
+      <div class="bc-demo__stage" id="bc-demo-showcase"></div>
+
+      <!-- 开发控件面板挂载点（Demo 专用，不属于生产组件） -->
+      <div class="bc-demo__panel-host" id="bc-demo-panel"></div>
+
+      <!-- 实时状态（效果 / 倾角 / 卡面文件名，验收用） -->
+      <dl class="bc-demo__status" id="bc-demo-status" aria-label="当前运行状态"></dl>
+
+      <!-- 按钮点击反馈（纯前端演示） -->
+      <p class="bc-demo__feedback" id="bc-demo-feedback" role="status" aria-live="polite">
+        等待操作：可点击商品按钮或调整下方开发控件。
+      </p>
+    </main>
+
+    <script type="module" src="/src/demo/main.ts"></script>
+  </body>
+</html>

@@ -1,0 +1,289 @@
+/*
+ * Bank Card Showcase — 商品展示容器样式（代理 C 维护）
+ *
+ * 约束（会被 tests/product-showcase.test.ts 断言）：
+ *   1. 只允许 `.bc-showcase*` 与 `.bc-btn*` 选择器；禁止 :root / html / body / 通配符
+ *      等任何全局选择器，组件不得影响宿主站点。
+ *   2. 不依赖宿主全局 CSS 变量：所有设计令牌都在 `.bc-showcase` 上以
+ *      `--bc-showcase-*` 重新声明（移植到 WordPress 时无需站点配合）。
+ *   3. 不使用在线字体 / CDN，字体为系统字体栈。
+ *
+ * 设计系统（已由设计系统检索确定）：
+ *   primary #059669 · secondary #10B981 · accent #EA580C · 背景 #ECFDF5
+ *   ink #064E3B · 卡片白 #FFFFFF · muted #E8F1F3 · muted 文字 #475569 · 边框 #A7F3D0
+ *
+ * 对比度取舍（要求 ≥ 4.5:1，正文 16px）：
+ *   - 白字 / #059669 = 3.8:1 ✗ → 主按钮底改为同色系的 #047857（5.5:1）✓；
+ *     低库存文字同理用 #C2410C（5.2:1），#EA580C 只用于非文字的圆点指示（图形 ≥ 3:1）。
+ *   - #059669 仍用于焦点环、边框等图形元素。
+ */
+
+.bc-showcase {
+  /* —— 组件自带设计令牌（不读宿主变量）—— */
+  --bc-showcase-primary: #059669;
+  --bc-showcase-primary-ink: #047857;
+  --bc-showcase-primary-deep: #065f46;
+  --bc-showcase-accent: #ea580c;
+  --bc-showcase-accent-ink: #c2410c;
+  --bc-showcase-surface: #ffffff;
+  --bc-showcase-muted: #e8f1f3;
+  --bc-showcase-muted-ink: #475569;
+  --bc-showcase-border: #a7f3d0;
+  --bc-showcase-ink: #064e3b;
+  --bc-showcase-radius: 16px;
+  --bc-showcase-duration: 200ms;
+
+  box-sizing: border-box;
+  display: grid;
+  grid-template-columns: minmax(0, 1.05fr) minmax(0, 1fr);
+  gap: 32px;
+  align-items: center;
+  width: 100%;
+  min-width: 0;
+  margin: 0;
+  padding: 0;
+  font-family: system-ui, -apple-system, "Segoe UI", "Microsoft YaHei", "PingFang SC", sans-serif;
+  font-size: 16px;
+  font-weight: 400;
+  line-height: 1.5;
+  color: var(--bc-showcase-ink);
+  text-align: start;
+}
+
+/* 左：卡面（宽度用响应式约束，绝不横向溢出） */
+.bc-showcase__media {
+  box-sizing: border-box;
+  width: 100%;
+  min-width: 0;
+  /* 卡片宽度 = min(100%, 520px) */
+  max-width: min(100%, 520px);
+  margin-inline: auto;
+}
+
+/* 右：白色信息卡 */
+.bc-showcase__info {
+  box-sizing: border-box;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  min-width: 0;
+  margin: 0;
+  padding: 24px;
+  overflow-wrap: break-word;
+  background-color: var(--bc-showcase-surface);
+  border: 1px solid var(--bc-showcase-border);
+  border-radius: var(--bc-showcase-radius);
+  /*
+   * 投影走宿主可覆盖的变量：宿主只要在任意祖先元素上设置
+   * `--bc-showcase-info-shadow` 即可整体调轻/调重（例如切换到更扁平的视觉风格），
+   * 无需覆盖组件类名。默认是两段轻阴影。
+   */
+  box-shadow: var(
+    --bc-showcase-info-shadow,
+    0 1px 2px rgba(6, 78, 59, 0.06),
+    0 16px 32px -24px rgba(6, 78, 59, 0.45)
+  );
+}
+
+.bc-showcase__name {
+  margin: 0;
+  font-size: 22px;
+  font-weight: 600;
+  line-height: 1.3;
+  letter-spacing: 0.01em;
+  color: var(--bc-showcase-ink);
+}
+
+.bc-showcase__desc {
+  margin: 0;
+  font-size: 16px;
+  line-height: 1.5;
+  color: var(--bc-showcase-muted-ink);
+}
+
+.bc-showcase__price {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 8px;
+  margin: 4px 0 0;
+}
+
+.bc-showcase__price-value {
+  font-size: 24px;
+  font-weight: 700;
+  line-height: 1.2;
+  color: var(--bc-showcase-ink);
+  font-variant-numeric: tabular-nums;
+}
+
+.bc-showcase__price-compare {
+  font-size: 16px;
+  font-weight: 400;
+  color: var(--bc-showcase-muted-ink);
+  text-decoration: line-through;
+}
+
+/* 库存：文字 + 圆点指示（圆点用 CSS 绘制，不用 emoji） */
+.bc-showcase__stock {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 16px;
+  font-weight: 500;
+}
+
+.bc-showcase__stock::before {
+  content: "";
+  flex: 0 0 auto;
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background-color: var(--bc-showcase-primary);
+  transition: background-color var(--bc-showcase-duration) ease;
+}
+
+.bc-showcase__stock[data-bc-stock-state="in-stock"] {
+  color: var(--bc-showcase-primary-ink);
+}
+
+.bc-showcase__stock[data-bc-stock-state="in-stock"]::before {
+  background-color: var(--bc-showcase-primary);
+}
+
+.bc-showcase__stock[data-bc-stock-state="low-stock"] {
+  color: var(--bc-showcase-accent-ink);
+}
+
+.bc-showcase__stock[data-bc-stock-state="low-stock"]::before {
+  background-color: var(--bc-showcase-accent);
+}
+
+.bc-showcase__stock[data-bc-stock-state="out-of-stock"] {
+  color: var(--bc-showcase-muted-ink);
+}
+
+.bc-showcase__stock[data-bc-stock-state="out-of-stock"]::before {
+  background-color: var(--bc-showcase-muted-ink);
+}
+
+.bc-showcase__actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+  margin: 8px 0 0;
+}
+
+/* `hidden` 必须显式声明：作者样式优先级高于 UA 的 [hidden] { display: none } */
+.bc-showcase__desc[hidden],
+.bc-showcase__stock[hidden],
+.bc-showcase__actions[hidden],
+.bc-showcase__price-compare[hidden] {
+  display: none;
+}
+
+/* —— 按钮 —— */
+.bc-btn {
+  box-sizing: border-box;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  /* 点击区域 ≥ 44 × 44px */
+  min-height: 44px;
+  min-width: 44px;
+  margin: 0;
+  padding: 10px 20px;
+  font-family: inherit;
+  font-size: 16px;
+  font-weight: 600;
+  line-height: 1.25;
+  text-align: center;
+  text-decoration: none;
+  border: 1px solid transparent;
+  border-radius: 8px;
+  cursor: pointer;
+  transition:
+    background-color var(--bc-showcase-duration) ease,
+    border-color var(--bc-showcase-duration) ease,
+    color var(--bc-showcase-duration) ease,
+    box-shadow var(--bc-showcase-duration) ease;
+  -webkit-tap-highlight-color: transparent;
+}
+
+.bc-btn--primary {
+  background-color: var(--bc-showcase-primary-ink);
+  border-color: var(--bc-showcase-primary-ink);
+  color: #ffffff;
+}
+
+.bc-btn--primary:hover:not(:disabled) {
+  background-color: var(--bc-showcase-primary-deep);
+  border-color: var(--bc-showcase-primary-deep);
+}
+
+.bc-btn--secondary {
+  background-color: var(--bc-showcase-surface);
+  border-color: var(--bc-showcase-border);
+  color: var(--bc-showcase-ink);
+}
+
+.bc-btn--secondary:hover:not(:disabled) {
+  background-color: var(--bc-showcase-muted);
+  border-color: var(--bc-showcase-primary);
+}
+
+/* 键盘焦点必须可见（2px + 2px offset，避开圆角裁切） */
+.bc-btn:focus-visible {
+  outline: 2px solid var(--bc-showcase-primary);
+  outline-offset: 2px;
+}
+
+/* 缺货 / 显式禁用：不改 opacity，保持文字 ≥ 4.5:1 */
+.bc-btn:disabled {
+  background-color: var(--bc-showcase-muted);
+  border-color: var(--bc-showcase-border);
+  color: var(--bc-showcase-muted-ink);
+  cursor: not-allowed;
+  box-shadow: none;
+}
+
+.bc-btn:disabled:hover {
+  background-color: var(--bc-showcase-muted);
+  border-color: var(--bc-showcase-border);
+}
+
+/* —— 移动端：上卡下信息，卡片居中 —— */
+@media (max-width: 720px) {
+  .bc-showcase {
+    grid-template-columns: minmax(0, 1fr);
+    gap: 20px;
+  }
+
+  .bc-showcase__media {
+    max-width: min(100%, 520px);
+  }
+
+  .bc-showcase__info {
+    padding: 20px;
+  }
+
+  .bc-showcase__actions .bc-btn {
+    /* 移动端按钮铺满一行，便于点按 */
+    flex: 1 1 auto;
+  }
+}
+
+/* 减少动效：去掉过渡，静态呈现 */
+@media (prefers-reduced-motion: reduce) {
+  .bc-btn,
+  .bc-showcase__stock::before {
+    transition: none;
+  }
+}
+
+/* 高对比度模式：按钮描边在 Windows 强制颜色下保持可见 */
+@media (forced-colors: active) {
+  .bc-btn {
+    border-color: currentColor;
+  }
+}

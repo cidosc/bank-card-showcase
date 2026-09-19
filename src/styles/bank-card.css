@@ -1,0 +1,179 @@
+/*
+ * Bank Card Showcase — 组件命名空间样式（代理 A 维护）
+ *
+ * 约束：只允许 `.bc-*` 选择器，禁止使用任何全局选择器（根元素 / 文档元素 / 通配符）。
+ * 设计取舍：
+ *   1. 底层 @kongyo2/cards-css 会在全局根上写一批 `--card-*` 自定义属性。
+ *      这里在 `.bc-card` 上重新声明同一批变量，使组件即使在没有站点全局样式的
+ *      环境（WordPress 主题、Shadow DOM、纯 HTML 页面）里也能正确渲染。
+ *   2. 按压反馈由包装层实现：真实 transform: scale() 施加在 `.bc-card` 上，
+ *      与底层只写 `.holo-card__translater/_rotator` 的 transform 互不冲突。
+ *   3. 圆角使用 ISO/IEC 7810 ID-1 银行卡比例（卡角半径 ≈ 3.18mm）：
+ *      横向 3.18 / 85.6 ≈ 3.72%，纵向 3.18 / 53.98 ≈ 5.89%。
+ */
+
+.bc-card {
+  /* —— 底层需要的变量：不依赖站点全局根 —— */
+  /* 底层 `--card-aspect` = CSS aspect-ratio 的「宽 / 高」，横版银行卡为 1.586。 */
+  --card-aspect: var(--bc-aspect, 1.586);
+  /* 银行卡 ISO 圆角：横向 3.72% / 纵向 5.89% */
+  --card-radius: 3.72% / 5.89%;
+  --card-back: hsl(210, 18%, 16%);
+  --card-edge: hsl(47, 100%, 78%);
+  --card-glow: hsl(175, 100%, 90%);
+
+  --sunpillar-1: hsl(2, 100%, 73%);
+  --sunpillar-2: hsl(53, 100%, 69%);
+  --sunpillar-3: hsl(93, 100%, 69%);
+  --sunpillar-4: hsl(176, 100%, 76%);
+  --sunpillar-5: hsl(228, 100%, 74%);
+  --sunpillar-6: hsl(283, 100%, 73%);
+  --sunpillar-clr-1: var(--sunpillar-1);
+  --sunpillar-clr-2: var(--sunpillar-2);
+  --sunpillar-clr-3: var(--sunpillar-3);
+  --sunpillar-clr-4: var(--sunpillar-4);
+  --sunpillar-clr-5: var(--sunpillar-5);
+  --sunpillar-clr-6: var(--sunpillar-6);
+
+  --pointer-x: 50%;
+  --pointer-y: 50%;
+  --pointer-from-center: 0;
+  --pointer-from-top: 0;
+  --pointer-from-left: 0;
+  --pointer-dx: 0;
+  --pointer-dy: 0;
+  --card-scale: 1;
+  --card-opacity: 0;
+  --translate-x: 0px;
+  --translate-y: 0px;
+  --rotate-x: 0deg;
+  --rotate-y: 0deg;
+  --background-x: var(--pointer-x);
+  --background-y: var(--pointer-y);
+  --tilt-x: 0;
+  --tilt-y: 0;
+  --card-active: 0;
+
+  /* —— 包装层自己的变量 —— */
+  /* --bc-aspect 由 JS 写入 = aspectRatio（宽 / 高），与底层 --card-aspect 保持一致 */
+  --bc-aspect: 1.586;
+  --bc-press: 1;
+
+  position: relative;
+  display: block;
+  box-sizing: border-box;
+  width: 100%;
+  max-width: 100%;
+  aspect-ratio: var(--bc-aspect);
+  border-radius: var(--card-radius);
+  /* 真实按压缩放施加在根元素上 */
+  transform: scale(var(--bc-press, 1));
+  transform-origin: center center;
+  transition: transform 160ms ease-out;
+  /* 允许纵向滚动，仅在横向 / 拖拽时接管，避免移动端干扰页面滚动 */
+  touch-action: pan-y;
+  -webkit-tap-highlight-color: transparent;
+  -webkit-user-select: none;
+  user-select: none;
+}
+
+/* 银色卡：中性银灰的描边与辉光 */
+.bc-card[data-bc-effect="silver"] {
+  --card-edge: hsl(210, 12%, 84%);
+  --card-glow: hsl(210, 10%, 68%);
+}
+
+/*
+ * 质感（surface）
+ * 底层 `.holo-card__rotator` 自带两层较重的黑色投影
+ * （`0px 10px 20px -5px black` / `0 2px 15px -5px black`），在简洁浅色页面里过重、过“真实”。
+ * 这里用属性选择器（特异性高于底层选择器）区分两种质感：
+ *   - flat（默认）：1px 内描边 + 两段极轻阴影，去掉霓虹描边/辉光，并把 3D 透视收平；
+ *   - physical：保留底层原样的重投影与边缘高光（不覆盖 box-shadow，即底层默认效果）。
+ */
+.bc-card {
+  --card-perspective: 1000px;
+}
+
+.bc-card[data-bc-surface="flat"] {
+  --card-glow: transparent;
+  --card-edge: transparent;
+}
+
+.bc-card[data-bc-surface="flat"] .bc-card__holo .holo-card__rotator,
+.bc-card[data-bc-surface="flat"] .bc-card__holo.holo-card--active .holo-card__rotator,
+.bc-card[data-bc-surface="flat"] .bc-card__holo .holo-card__rotator:focus {
+  box-shadow:
+    inset 0 0 0 1px hsl(0, 0%, 0%, 0.07),
+    0 1px 2px hsl(160, 24%, 20%, 0.08),
+    0 6px 16px -12px hsl(160, 24%, 20%, 0.28);
+}
+
+/* physical：恢复底层默认的立体透视，盒阴影不覆盖（= 依赖自带的实体感） */
+.bc-card[data-bc-surface="physical"] {
+  --card-perspective: 600px;
+}
+
+/* pressScale === 1：关闭按压反馈（不加过渡、不缩放） */
+.bc-card[data-bc-press="off"] {
+  transition: none;
+  transform: none;
+}
+
+/* reduced motion：卡片完全静止（无过渡、无缩放） */
+.bc-card[data-bc-reduced-motion="true"] {
+  transition: none;
+  transform: none;
+}
+
+/* 鼠标按住 / 拖拽时的光标提示 */
+.bc-card[data-bc-dragging="true"] {
+  cursor: grabbing;
+}
+
+/*
+ * reduced motion：卡片完全静止。
+ * 底层在非交互状态下会退化为纯 CSS hover 倾斜兜底，这里用更高优先级的选择器
+ * 把倾斜 / 位移 / 缩放变量钉死为静止值，并关闭底层元素上的过渡。
+ */
+.bc-card[data-bc-reduced-motion="true"] .bc-card__holo,
+.bc-card[data-bc-reduced-motion="true"] .bc-card__holo:hover {
+  --pointer-x: 50%;
+  --pointer-y: 50%;
+  --pointer-from-center: 0;
+  --pointer-from-top: 0;
+  --pointer-from-left: 0;
+  --pointer-dx: 0;
+  --pointer-dy: 0;
+  --card-scale: 1;
+  --card-opacity: 0;
+  --translate-x: 0px;
+  --translate-y: 0px;
+  --rotate-x: 0deg;
+  --rotate-y: 0deg;
+  --background-x: 50%;
+  --background-y: 50%;
+  --tilt-x: 0;
+  --tilt-y: 0;
+}
+
+.bc-card[data-bc-reduced-motion="true"] .bc-card__holo,
+.bc-card[data-bc-reduced-motion="true"] .bc-card__holo .holo-card__translater,
+.bc-card[data-bc-reduced-motion="true"] .bc-card__holo .holo-card__rotator,
+.bc-card[data-bc-reduced-motion="true"] .bc-card__holo .holo-card__shine,
+.bc-card[data-bc-reduced-motion="true"] .bc-card__holo .holo-card__glare {
+  transition: none;
+}
+
+/* 双击 / 长按不产生文本选择高亮外的额外行为 */
+.bc-card__holo {
+  box-sizing: border-box;
+  width: 100%;
+  border-radius: var(--card-radius);
+}
+
+/* 卡面图不参与浏览器原生拖拽 / 文本选择，保证“按住拖动观赏”不被抢走手势 */
+.bc-card img {
+  -webkit-user-drag: none;
+  user-select: none;
+}

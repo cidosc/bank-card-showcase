@@ -1,0 +1,31 @@
+{
+  "name": "bank-card-showcase",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "description": "Framework-agnostic bank-card product showcase component (tilt, shine and foil effects) built on @kongyo2/cards-css.",
+  "license": "MIT",
+  "scripts": {
+    "dev": "vite",
+    "build": "vite build",
+    "build:demo": "vite build --config vite.demo.config.ts",
+    "preview": "vite preview -c vite.demo.config.ts",
+    "typecheck": "tsc --noEmit",
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "acceptance": "node tools/acceptance.mjs",
+    "baseline": "node tools/acceptance.mjs --check-baseline acceptance-artifacts/acceptance-report.json",
+    "verify": "npm run typecheck && npm test && npm run build && npm run build:demo && npm run acceptance",
+    "assets": "node tools/make-placeholder-assets.mjs"
+  },
+  "dependencies": {
+    "@kongyo2/cards-css": "0.5.0"
+  },
+  "devDependencies": {
+    "@types/node": "^24.13.6",
+    "jsdom": "27.4.0",
+    "typescript": "5.9.3",
+    "vite": "7.3.6",
+    "vitest": "5.0.1"
+  }
+}

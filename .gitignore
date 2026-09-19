@@ -1,0 +1,21 @@
+# 依赖与构建产物（部署时只需 dist/ 下的文件）
+node_modules/
+dist/
+dist-demo/
+
+# 验收脚本产出的截图与报告（本地证据，可重新生成：npm run acceptance）
+acceptance-artifacts/
+
+# 编辑器 / 系统
+.DS_Store
+Thumbs.db
+.idea/
+.vscode/
+*.log
+npm-debug.log*
+
+# 占位素材生成脚本的缓存
+__pycache__/
+
+# 本地测试素材（第三方/品牌相关图片，仅本地使用，不进交付产物）
+test-assets/

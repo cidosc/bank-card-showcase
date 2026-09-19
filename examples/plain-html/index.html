@@ -1,0 +1,317 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Bank Card Showcase —— 纯 HTML 集成示例（示例页面）</title>
+
+<!-- 组件样式：构建产物，已自托管底层 cards-css，不依赖 CDN -->
+<link rel="stylesheet" href="../../dist/bank-card-showcase.css" />
+
+<!--
+  仅限本示例页面的布局样式。
+  组件自己的样式全部在 dist/bank-card-showcase.css 里，示例样式不会写进组件。
+-->
+<style>
+  /* 示例页专用变量：挂在 body 上，避免出现全局根选择器 */
+  body {
+    --page-bg: #eef7f0;
+    --page-card: #ffffff;
+    --page-line: #cfe4d6;
+    --page-text: #17301f;
+    --page-muted: #5b7a66;
+    --page-accent: #2e7d4f;
+
+    margin: 0;
+    padding: 24px 16px 48px;
+    background: var(--page-bg);
+    color: var(--page-text);
+    font: 16px/1.6 system-ui, -apple-system, "Segoe UI", "Microsoft YaHei", sans-serif;
+  }
+
+  .page {
+    max-width: 1000px;
+    margin: 0 auto;
+  }
+
+  .page__title {
+    margin: 0 0 4px;
+    font-size: 24px;
+  }
+
+  .page__lead {
+    margin: 0 0 20px;
+    color: var(--page-muted);
+    font-size: 14px;
+  }
+
+  .page__note {
+    margin: 0 0 24px;
+    padding: 10px 14px;
+    border: 1px solid #f0d9a8;
+    border-radius: 8px;
+    background: #fffaf0;
+    color: #7a5a12;
+    font-size: 13px;
+  }
+
+  .demo {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+    gap: 24px;
+  }
+
+  .demo__item {
+    padding: 16px;
+    border: 1px solid var(--page-line);
+    border-radius: 12px;
+    background: var(--page-card);
+  }
+
+  .demo__heading {
+    margin: 0 0 2px;
+    font-size: 16px;
+  }
+
+  .demo__meta {
+    margin: 0 0 12px;
+    color: var(--page-muted);
+    font-size: 13px;
+    overflow-wrap: anywhere;
+  }
+
+  /* 承载容器：组件根元素占满容器宽度，并按 aspectRatio 决定高度 */
+  .demo__stage {
+    max-width: 380px;
+  }
+
+  .controls {
+    margin-top: 24px;
+    padding: 16px;
+    border: 1px solid var(--page-line);
+    border-radius: 12px;
+    background: var(--page-card);
+  }
+
+  .controls__title {
+    margin: 0 0 4px;
+    font-size: 16px;
+  }
+
+  .controls__hint {
+    margin: 0 0 12px;
+    color: var(--page-muted);
+    font-size: 13px;
+  }
+
+  .controls__row {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 10px;
+  }
+
+  .btn {
+    padding: 9px 16px;
+    border: 1px solid var(--page-accent);
+    border-radius: 8px;
+    background: var(--page-accent);
+    color: #fff;
+    font: inherit;
+    font-size: 14px;
+    cursor: pointer;
+  }
+
+  .btn--ghost {
+    background: #fff;
+    color: var(--page-accent);
+  }
+
+  .btn:disabled {
+    border-color: #c9d6ce;
+    background: #eef1ef;
+    color: #93a49b;
+    cursor: not-allowed;
+  }
+
+  .btn:focus-visible {
+    outline: 2px solid #1b5e3a;
+    outline-offset: 2px;
+  }
+
+  .log {
+    margin: 14px 0 0;
+    min-height: 1.6em;
+    color: var(--page-text);
+    font-size: 13px;
+    overflow-wrap: anywhere;
+  }
+</style>
+</head>
+
+<body>
+<div class="page">
+  <h1 class="page__title">Bank Card Showcase —— 纯 HTML 集成示例</h1>
+  <p class="page__lead">
+    这是一个<strong>示例页面</strong>：只用 <code>&lt;link&gt;</code> + <code>&lt;script&gt;</code>
+    引入构建产物，即可在普通 HTML 页面里创建银行卡式商品卡片。全部可见文本为中文。
+  </p>
+  <p class="page__note">
+    页面中的卡面为 <code>public/cards/</code> 下的<strong>临时占位素材</strong>（非正式卡面），
+    上线前必须替换为你自己制作的正式卡面；不得使用第三方版权素材。
+  </p>
+
+  <section class="demo" aria-label="卡片示例">
+    <article class="demo__item">
+      <h2 class="demo__heading">卡片 A</h2>
+      <p class="demo__meta" id="meta-a">效果：normal（底层 none）　卡面：cookie.png</p>
+      <div class="demo__stage" id="mount-a"></div>
+    </article>
+
+    <article class="demo__item">
+      <h2 class="demo__heading">卡片 B（演示卡）</h2>
+      <p class="demo__meta" id="meta-b">效果：holographic</p>
+      <div class="demo__stage" id="mount-b"></div>
+    </article>
+  </section>
+
+  <section class="controls" aria-label="交互演示">
+    <h2 class="controls__title">生命周期与更新演示</h2>
+    <p class="controls__hint">以下四个按钮只作用于<strong>卡片 B</strong>（卡片 A 固定为 <code>normal</code>，便于对比）。</p>
+    <div class="controls__row">
+      <button class="btn" type="button" id="btn-effect">切换效果</button>
+      <button class="btn" type="button" id="btn-image">更换卡面</button>
+      <button class="btn btn--ghost" type="button" id="btn-destroy">卸载</button>
+      <button class="btn btn--ghost" type="button" id="btn-mount">重新挂载</button>
+    </div>
+    <p class="log" id="log" role="status" aria-live="polite">等待操作……</p>
+  </section>
+</div>
+
+<!-- 组件产物：IIFE 格式，暴露全局 BankCardShowcase；file:// 下可直接双击打开 -->
+<script src="../../dist/bank-card-showcase.iife.js"></script>
+<script>
+(function () {
+  "use strict";
+
+  var logEl = document.getElementById("log");
+  var metaB = document.getElementById("meta-b");
+
+  function log(message) {
+    logEl.textContent = message;
+  }
+
+  var NS = window.BankCardShowcase;
+  if (!NS) {
+    log("未找到全局对象 BankCardShowcase：请先在项目根目录执行 npm run build，再重新打开本页面。");
+    return;
+  }
+
+  /* —— 图片数据：路径相对本页面（examples/plain-html/），file:// 下可正常解析 —— */
+  var CARD_A = {
+    image: "../../public/cards/cookie.png",
+    alt: "Cookie 临时占位卡面（非正式美术资源）"
+  };
+
+  var CARD_B_IMAGES = [
+    {
+      image: "../../public/cards/panda.webp",
+      alt: "Sad Panda 临时占位卡面（非正式美术资源）",
+      silverImage: "../../public/cards/panda-silver.webp"
+    },
+    {
+      image: "../../public/cards/cookie.png",
+      alt: "Cookie 临时占位卡面（非正式美术资源）",
+      silverImage: ""
+    }
+  ];
+
+  /* —— 卡片 A：固定 normal 效果，作为对照 —— */
+  NS.createBankCard({
+    image: CARD_A.image,
+    imageAlt: CARD_A.alt,
+    effect: "normal"
+  }).mount("#mount-a");
+
+  /* —— 卡片 B：演示卡，四个按钮都作用于它 —— */
+  var EFFECTS = NS.BANK_CARD_EFFECTS;
+  var imageIndex = 0;
+  var effectIndex = Math.max(0, EFFECTS.indexOf("holographic"));
+
+  function createCardB() {
+    var pick = CARD_B_IMAGES[imageIndex];
+    var card = NS.createBankCard({
+      image: pick.image,
+      imageAlt: pick.alt,
+      silverImage: pick.silverImage,
+      effect: EFFECTS[effectIndex],
+      // 显式写出两个关键默认值，便于对照 docs/USAGE.md 的参数表
+      maxTilt: 7,
+      aspectRatio: 1.586
+    });
+    card.mount("#mount-b");
+    return card;
+  }
+
+  var cardB = createCardB();
+
+  var btnEffect = document.getElementById("btn-effect");
+  var btnImage = document.getElementById("btn-image");
+  var btnDestroy = document.getElementById("btn-destroy");
+  var btnMount = document.getElementById("btn-mount");
+
+  function fileNameOf(url) {
+    return url.split("/").pop();
+  }
+
+  function syncControls() {
+    var alive = !cardB.destroyed;
+    btnEffect.disabled = !alive;
+    btnImage.disabled = !alive;
+    btnDestroy.disabled = !alive;
+    metaB.textContent =
+      "效果：" + EFFECTS[effectIndex] +
+      "　卡面：" + fileNameOf(CARD_B_IMAGES[imageIndex].image) +
+      "　状态：" + (alive ? "已挂载" : "已卸载");
+  }
+
+  btnEffect.addEventListener("click", function () {
+    if (cardB.destroyed) { return; }
+    effectIndex = (effectIndex + 1) % EFFECTS.length;
+    var next = EFFECTS[effectIndex];
+    cardB.setEffect(next);
+    log('setEffect("' + next + '")：等价于 update({ effect: "' + next + '" })，只更新效果层，不重建实例。');
+    syncControls();
+  });
+
+  btnImage.addEventListener("click", function () {
+    if (cardB.destroyed) { return; }
+    imageIndex = (imageIndex + 1) % CARD_B_IMAGES.length;
+    var pick = CARD_B_IMAGES[imageIndex];
+    cardB.update({ image: pick.image, imageAlt: pick.alt, silverImage: pick.silverImage });
+    log("update({ image, imageAlt, silverImage })：只替换底层 <img> 的 src / alt，实例与监听保持不变。");
+    syncControls();
+  });
+
+  btnDestroy.addEventListener("click", function () {
+    if (cardB.destroyed) { return; }
+    cardB.destroy();
+    log("destroy()：已移除 DOM、事件监听与动画。实例已被销毁，不可再次 mount()；重复 destroy() 是安全的空操作。");
+    syncControls();
+  });
+
+  btnMount.addEventListener("click", function () {
+    if (cardB.destroyed) {
+      cardB = createCardB();
+      log("已用 createBankCard() 创建全新实例，并挂载到同一容器 #mount-b。");
+    } else {
+      cardB.mount("#mount-b");
+      log("mount()：实例仍存活，重复挂载是幂等的（元素不变、不会重复绑定事件）。");
+    }
+    syncControls();
+  });
+
+  syncControls();
+})();
+</script>
+</body>
+</html>

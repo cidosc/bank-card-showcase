@@ -1,0 +1,471 @@
+<!doctype html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+    <title>闪卡效果对照页 · Bank Card Showcase（含临时占位卡面）</title>
+    <meta
+      name="description"
+      content="Bank Card Showcase 的闪卡效果对照页：4 种效果 × 浅色/深色/真实感卡面，用于目视与量化检查过曝与过暗。"
+    />
+    <!-- 组件产物：先执行 npm run build -->
+    <link rel="stylesheet" href="../../dist/bank-card-showcase.css" />
+    <style>
+      /* 仅本示例页面的布局样式，与组件产物无关（组件产物里没有任何全局选择器）。 */
+      :root {
+        color-scheme: light;
+      }
+
+      body {
+        margin: 0;
+        padding: 28px clamp(16px, 4vw, 48px) 64px;
+        background: #ecfdf5;
+        color: #064e3b;
+        font-family: system-ui, -apple-system, "Segoe UI", "Microsoft YaHei", "PingFang SC", sans-serif;
+        font-size: 16px;
+        line-height: 1.5;
+      }
+
+      h1 {
+        margin: 0 0 8px;
+        font-size: clamp(22px, 3vw, 30px);
+      }
+
+      h2 {
+        margin: 40px 0 4px;
+        font-size: 18px;
+      }
+
+      .lead {
+        max-width: 76ch;
+        margin: 0 0 16px;
+        color: #14532d;
+      }
+
+      .warn {
+        max-width: 76ch;
+        margin: 0 0 22px;
+        padding: 10px 14px;
+        border: 1px solid #fcd34d;
+        border-radius: 10px;
+        background: #fffbeb;
+        color: #78350f;
+        font-size: 14px;
+      }
+
+      .panel {
+        margin: 0 0 8px;
+        padding: 14px 16px;
+        border: 1px solid #a7f3d0;
+        border-radius: 12px;
+        background: #ffffff;
+      }
+
+      .panel-row {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 20px 28px;
+        align-items: center;
+      }
+
+      .group {
+        display: flex;
+        gap: 8px;
+        align-items: center;
+      }
+
+      .group > span,
+      .group > label {
+        font-size: 13px;
+        font-weight: 600;
+        color: #475569;
+      }
+
+      button {
+        min-height: 40px;
+        padding: 0 14px;
+        border: 1px solid #a7f3d0;
+        border-radius: 8px;
+        background: #ffffff;
+        color: #064e3b;
+        font: inherit;
+        font-size: 14px;
+        cursor: pointer;
+      }
+
+      button[aria-pressed="true"] {
+        border-color: #059669;
+        background: #059669;
+        color: #ffffff;
+      }
+
+      button:focus-visible {
+        outline: 2px solid #059669;
+        outline-offset: 2px;
+      }
+
+      input[type="range"] {
+        width: 160px;
+        accent-color: #059669;
+      }
+
+      output {
+        min-width: 4ch;
+        font-variant-numeric: tabular-nums;
+        font-size: 14px;
+        color: #475569;
+      }
+
+      .reference {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 18px;
+      }
+
+      .reference figure {
+        margin: 0;
+        width: 260px;
+      }
+
+      .reference img {
+        display: block;
+        width: 100%;
+        aspect-ratio: 1.586;
+        border-radius: 10px;
+        border: 1px solid #a7f3d0;
+      }
+
+      .reference figcaption,
+      .item figcaption {
+        margin-top: 6px;
+        font-size: 13px;
+        line-height: 1.45;
+        color: #475569;
+      }
+
+      .reference figcaption strong,
+      .item figcaption strong {
+        color: #064e3b;
+      }
+
+      .grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
+        gap: 22px 20px;
+        margin-top: 18px;
+      }
+
+      .item {
+        margin: 0;
+        padding: 12px;
+        border: 1px solid #a7f3d0;
+        border-radius: 12px;
+        background: #ffffff;
+      }
+
+      .item .mount {
+        width: 100%;
+      }
+
+      .item figcaption {
+        display: flex;
+        flex-direction: column;
+        gap: 2px;
+      }
+
+      .item[data-effect="holographic"] figcaption strong {
+        color: #7c3aed;
+      }
+
+      .item[data-effect="glitter"] figcaption strong {
+        color: #b45309;
+      }
+
+      .item[data-effect="silver"] figcaption strong {
+        color: #475569;
+      }
+
+      .hint {
+        margin: 14px 0 0;
+        font-size: 13px;
+        color: #475569;
+      }
+
+      code {
+        padding: 1px 5px;
+        border-radius: 5px;
+        background: #ecfdf5;
+        font-size: 13px;
+      }
+    </style>
+  </head>
+  <body>
+    <h1>闪卡效果对照页 · Bank Card Showcase</h1>
+    <p class="lead">
+      用途：同一张卡面并排对比 4 种效果（<code>normal</code> / <code>holographic</code> / <code>glitter</code> /
+      <code>silver</code>）在不同明暗卡面上的曝光表现，检查是否<strong>过曝</strong>（发白、细节丢失）或
+      <strong>过暗</strong>（发灰、图案发闷）。鼠标移到卡面上即可看到真实倾斜与反光；页面顶部可切换质感、效果强度与倾角。
+    </p>
+    <p class="warn">
+      <strong>卡面素材说明：</strong>①②③ 为项目自制的<strong>临时占位卡面</strong>（<code>npm run assets</code> 可复现）；
+      ④ 为项目负责人提供的<strong>本地测试图</strong>（位于 <code>test-assets/</code>，不随交付产物发布，仅用于本地检验特效在真实感美术上的表现）。
+      换成你自己的正式卡面后，请重新目视复核一次——深色卡与浅色卡的曝光表现不同。
+    </p>
+
+    <section class="panel" aria-label="全局控件">
+      <div class="panel-row">
+        <div class="group" role="group" aria-label="卡面质感">
+          <span>质感 surface</span>
+          <button type="button" data-surface="flat" aria-pressed="true">flat 平面</button>
+          <button type="button" data-surface="physical" aria-pressed="false">physical 实体</button>
+        </div>
+        <div class="group">
+          <label for="intensity">效果强度 intensity</label>
+          <input id="intensity" type="range" min="0" max="1" step="0.05" value="1" />
+          <output id="intensity-value" for="intensity">1.00</output>
+        </div>
+        <div class="group">
+          <label for="max-tilt">最大倾角 maxTilt</label>
+          <input id="max-tilt" type="range" min="0" max="14" step="1" value="7" />
+          <output id="max-tilt-value" for="max-tilt">7°</output>
+        </div>
+      </div>
+      <p class="hint">
+        提示：拖动“效果强度”可以直接看出反光层对卡面的影响幅度；把强度拉到最低仍能看到卡面 = 特效没有盖住图案。
+        页面上方的<strong>原始卡面参考</strong>是不带任何特效的原图，用来对照亮度与细节。
+      </p>
+    </section>
+
+    <h2>原始卡面参考（无特效）</h2>
+    <div class="reference" id="reference"></div>
+
+    <div id="faces"></div>
+
+    <script src="../../dist/bank-card-showcase.iife.js"></script>
+    <script>
+      (function () {
+        var api = window.BankCardShowcase;
+        if (!api) {
+          document.body.insertAdjacentHTML(
+            "afterbegin",
+            '<p class="warn">没有加载到 dist/bank-card-showcase.iife.js —— 请先在项目根目录执行 <code>npm run build</code>。</p>',
+          );
+          return;
+        }
+
+        // 原图基线（无特效），每个都会单独测亮度
+        var REFERENCES = [
+          { key: "cookie.webp", image: "../../public/cards/cookie.webp" },
+          { key: "panda.webp", image: "../../public/cards/panda.webp" },
+          { key: "panda-silver.webp", image: "../../public/cards/panda-silver.webp" },
+          { key: "dark.webp", image: "../../public/cards/dark.webp" },
+          { key: "panda-card.webp", image: "../../public/cards/panda-card.webp" },
+        ];
+
+        // 对照卡面：3 张内置占位卡面 + 1 张本地测试图（文件存在才渲染）
+        var FACES = [
+          {
+            key: "cookie",
+            title: "① 浅色卡面（暖米）：cookie.webp",
+            image: "../../public/cards/cookie.webp",
+            note: "浅色/高亮美术：最容易看出过曝（发白、细节丢失）。",
+          },
+          {
+            key: "panda",
+            title: "② 浅色卡面（浅绿）+ 独立银色原图：panda.webp / panda-silver.webp",
+            image: "../../public/cards/panda.webp",
+            silverImage: "../../public/cards/panda-silver.webp",
+            note: "silver 效果这里使用的是独立银色原图（silverImage），只叠加金属光泽。",
+          },
+          {
+            key: "dark",
+            title: "③ 深色卡面（深蓝）：dark.webp",
+            image: "../../public/cards/dark.webp",
+            note: "深色美术：最容易看出过曝（反光把暗部冲成白）与过暗（反光把图案压灰）。",
+          },
+          {
+            key: "panda-card",
+            title: "④ 项目提供的卡面（低多边形熊猫 · 浅绿几何背景）：panda-card.webp",
+            image: "../../public/cards/panda-card.webp",
+            note:
+              "项目负责人提供的卡面（左侧高对比主体 + 大面积浅色背景），用于检验特效在真实美术上的表现：" +
+              "含明确主体与明暗层次，比纯色块占位图更容易暴露过曝/过暗。",
+          },
+        ];
+
+        var EFFECTS = api.BANK_CARD_EFFECTS; // ["normal", "holographic", "glitter", "silver"]
+        var LOWER_BASE = { normal: "none", holographic: "holo", glitter: "glitter", silver: "metal" };
+
+        var state = { surface: "flat", intensity: 1, maxTilt: 7 };
+        var cards = [];
+        var referenceHost = document.getElementById("reference");
+        var facesHost = document.getElementById("faces");
+
+        function statsOfImage(img) {
+          var canvas = document.createElement("canvas");
+          canvas.width = img.naturalWidth;
+          canvas.height = img.naturalHeight;
+          var ctx = canvas.getContext("2d");
+          ctx.drawImage(img, 0, 0);
+          var data = ctx.getImageData(0, 0, canvas.width, canvas.height).data;
+          var total = canvas.width * canvas.height;
+          var sum = 0;
+          var blown = 0;
+          var crushed = 0;
+          for (var i = 0; i < total; i++) {
+            var r = data[i * 4];
+            var g = data[i * 4 + 1];
+            var b = data[i * 4 + 2];
+            sum += 0.2126 * r + 0.7152 * g + 0.0722 * b;
+            if (r >= 254 || g >= 254 || b >= 254) blown++;
+            if (r <= 6 && g <= 6 && b <= 6) crushed++;
+          }
+          return {
+            mean: (sum / total).toFixed(1),
+            blown: ((blown / total) * 100).toFixed(2),
+            crushed: ((crushed / total) * 100).toFixed(2),
+          };
+        }
+
+        function addReference(entry) {
+          var figure = document.createElement("figure");
+          var img = document.createElement("img");
+          img.src = entry.image;
+          img.alt = "原始卡面参考：" + entry.key;
+          var caption = document.createElement("figcaption");
+          var strong = document.createElement("strong");
+          strong.textContent = entry.key;
+          var luma = document.createElement("span");
+          luma.textContent = "亮度测量中…";
+          luma.dataset.luma = entry.key;
+          caption.appendChild(strong);
+          caption.appendChild(document.createElement("br"));
+          caption.appendChild(document.createTextNode("无任何特效（原图参考）"));
+          caption.appendChild(document.createElement("br"));
+          caption.appendChild(luma);
+          figure.appendChild(img);
+          figure.appendChild(caption);
+          referenceHost.appendChild(figure);
+
+          function run() {
+            try {
+              var stats = statsOfImage(img);
+              luma.textContent =
+                "平均亮度 " + stats.mean + " / 255 · 通道削波 " + stats.blown + "% · 暗部压死 " + stats.crushed + "%";
+            } catch (error) {
+              luma.textContent = "（file:// 下无法读取像素；用 http 打开或看验收报告里的数值）";
+            }
+          }
+          if (img.complete && img.naturalWidth) run();
+          else img.addEventListener("load", run, { once: true });
+        }
+
+        function buildFace(face) {
+          var heading = document.createElement("h2");
+          heading.textContent = face.title;
+          facesHost.appendChild(heading);
+
+          var note = document.createElement("p");
+          note.className = "hint";
+          note.textContent = face.note;
+          facesHost.appendChild(note);
+
+          var grid = document.createElement("div");
+          grid.className = "grid";
+          grid.dataset.face = face.image;
+          grid.dataset.silver = face.silverImage || "";
+          facesHost.appendChild(grid);
+
+          EFFECTS.forEach(function (effect) {
+            var item = document.createElement("figure");
+            item.className = "item";
+            item.dataset.effect = effect;
+
+            var mount = document.createElement("div");
+            mount.className = "mount";
+            item.appendChild(mount);
+
+            var caption = document.createElement("figcaption");
+            var strong = document.createElement("strong");
+            strong.textContent = effect;
+            var meta = document.createElement("span");
+            caption.appendChild(strong);
+            caption.appendChild(meta);
+            item.appendChild(caption);
+
+            grid.appendChild(item);
+
+            var card = api.createBankCard({
+              image: face.image,
+              imageAlt: face.key + " 卡面（" + effect + "）",
+              silverImage: face.silverImage,
+              effect: effect,
+              surface: state.surface,
+              intensity: state.intensity,
+              maxTilt: state.maxTilt,
+            });
+            card.mount(mount);
+            cards.push({ card: card, effect: effect, meta: meta });
+          });
+        }
+
+        function renderMeta() {
+          cards.forEach(function (entry) {
+            entry.meta.textContent =
+              "底层 " + LOWER_BASE[entry.effect] +
+              " · surface " + state.surface +
+              " · 强度 " + state.intensity.toFixed(2) +
+              " · maxTilt " + state.maxTilt + "°";
+          });
+        }
+
+        function applyAll() {
+          cards.forEach(function (entry) {
+            entry.card.update({
+              surface: state.surface,
+              intensity: state.intensity,
+              maxTilt: state.maxTilt,
+            });
+          });
+          renderMeta();
+        }
+
+        function boot() {
+          REFERENCES.forEach(addReference);
+          FACES.forEach(buildFace);
+          renderMeta();
+        }
+
+        document.querySelectorAll("[data-surface]").forEach(function (button) {
+          button.addEventListener("click", function () {
+            state.surface = button.dataset.surface;
+            document.querySelectorAll("[data-surface]").forEach(function (other) {
+              other.setAttribute("aria-pressed", String(other === button));
+            });
+            applyAll();
+          });
+        });
+
+        var intensityInput = document.getElementById("intensity");
+        var intensityValue = document.getElementById("intensity-value");
+        intensityInput.addEventListener("input", function () {
+          state.intensity = Number(intensityInput.value);
+          intensityValue.textContent = state.intensity.toFixed(2);
+          intensityInput.setAttribute("aria-valuetext", state.intensity.toFixed(2));
+          applyAll();
+        });
+
+        var tiltInput = document.getElementById("max-tilt");
+        var tiltValue = document.getElementById("max-tilt-value");
+        tiltInput.addEventListener("input", function () {
+          state.maxTilt = Number(tiltInput.value);
+          tiltValue.textContent = state.maxTilt + "°";
+          tiltInput.setAttribute("aria-valuetext", state.maxTilt + "°");
+          applyAll();
+        });
+
+        boot();
+      })();
+    </script>
+  </body>
+</html>
