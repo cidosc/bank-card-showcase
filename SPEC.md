@@ -232,3 +232,9 @@ createHoloCard({
     `tools/make-provided-card.py` 合成 `public/cards/panda-card.{png,webp}`（1015×640，1.586:1，ISO 圆角）
     与派生银色变体 `panda-card-silver.*`；效果对照页第 ④ 组使用同一素材（单一来源）。
     `test-assets/` 只保留源图（已被 `.gitignore` 排除，不进入仓库与交付产物）。
+
+14. **Demo 商品 A 也改用项目提供卡面**：`public/cards/cookie-card.{png,webp}`（源图 `rawpng/cookies.webp`，
+    1586×1000 = 1.5860，整幅型）与派生银色变体 `cookie-card-silver.*`，
+    由 `tools/make-provided-card.py` 统一生成（该脚本同时支持「主体抠图 + 背景」的合成型
+    与「整幅卡面构图」的整幅型；缺源图时提示并跳过）。效果对照页 ① 亦改用该素材，
+    曝光回归仍为 4 张卡面 × 4 效果 = 16 项。

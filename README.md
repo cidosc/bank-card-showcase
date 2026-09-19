@@ -183,9 +183,14 @@ card.mount("#mount");   // #mount 里需要有一个承载容器元素
 
 ## 素材说明
 
-`public/cards/` 下的图片是**临时占位素材（非正式卡面）**，由 `npm run assets` 可复现地生成，
-带有「TEMP PLACEHOLDER / 临时占位」水印。**上线前必须替换为用户自制的正式卡面**，
-且不得使用任何第三方版权素材。
+`public/cards/` 下有两类图片：
+
+| 类别 | 文件 | 说明 |
+| --- | --- | --- |
+| 项目提供的演示卡面 | `cookie-card.*`、`panda-card.*`、`panda-card-silver.*`、`cookie-card-silver.*` | 由 `tools/make-provided-card.py` 从 `test-assets/` 的源图生成（1015×640，1.586:1，ISO 圆角）；Demo 商品 A / B 与效果对照页使用它们 |
+| 中性临时占位 | `cookie.*`、`panda.*`、`panda-silver.*`、`dark.*` | 由 `npm run assets` 可复现生成，带「TEMP PLACEHOLDER / 临时占位」水印，用于明暗/深度等通用测试 |
+
+**上线前必须把上述所有图片替换为自制、拥有合法权利的正式卡面**（项目提供的演示图也不应作为最终上线素材）。
 
 ## 验收测试
 

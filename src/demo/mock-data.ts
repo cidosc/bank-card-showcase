@@ -13,12 +13,13 @@ import type { ProductData, ProductStock } from "../types.js";
 export const COOKIE_PRODUCT: ProductData = {
   id: "cookie",
   name: "Cookie 曲奇卡",
-  description: "暖米色曲奇主题卡面，默认镭射（holographic）效果；占位素材，仅用于组件联调。",
+  description: "低多边形曲奇 + 麦田背景的项目提供卡面，默认镭射（holographic）效果；另附独立银色原图用于 silver 效果演示。",
   price: "¥ 12.50",
   compareAtPrice: "¥ 18.00",
   stock: { label: "现货 · 库存充足", state: "in-stock" },
-  image: "/cards/cookie.webp",
-  imageAlt: "Cookie 曲奇主题的临时占位卡面",
+  image: "/cards/cookie-card.webp",
+  silverImage: "/cards/cookie-card-silver.webp",
+  imageAlt: "Cookie 低多边形曲奇主题卡面",
   effect: "holographic",
   actions: [
     { id: "add-to-cart", label: "加入购物车（演示）", variant: "primary" },
@@ -34,7 +35,7 @@ export const SAD_PANDA_PRODUCT: ProductData = {
   price: "¥ 68.00",
   stock: { label: "仅剩 3 件", state: "low-stock" },
   image: "/cards/panda-card.webp",
-  imageAlt: "Sad Panda 熊猫主题的临时占位卡面",
+  imageAlt: "Sad Panda 低多边形熊猫主题卡面",
   silverImage: "/cards/panda-card-silver.webp",
   effect: "glitter",
   actions: [

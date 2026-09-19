@@ -1,62 +1,53 @@
-# 临时占位卡面素材（TEMP PLACEHOLDER）
+# 卡面素材说明
 
-本目录下的所有图片都是**临时占位素材（placeholder）**，仅用于银行卡式商品展示
-组件的 Demo 开发与联调，**不是正式卡面美术资源**。
+本目录有两类图片：**项目提供的演示卡面**（Demo 商品 A / B 与效果对照页使用）与
+**中性临时占位素材**（带 TEMP 水印，用于明暗/深度等通用测试）。
 
-> ⚠️ 正式上线前必须替换为**用户自制的正式卡面**。
-> 不得使用任何第三方受版权保护的素材、官方卡面、logo 或插画。
+> ⚠️ 正式上线前必须把**所有**图片替换为**自制的正式卡面**（项目提供的演示图也不应作为最终上线素材）。
+> 不得使用第三方受版权保护的素材、官方卡面、logo 或插画。
 
-## 文件清单
+## 1. 项目提供的演示卡面
+
+由 `tools/make-provided-card.py` 从 `test-assets/` 的源图生成（源图目录已被 `.gitignore` 排除，不随仓库分发）：
+
+| 文件 | 用途 | 说明 |
+| --- | --- | --- |
+| `cookie-card.png` / `.webp` | 商品 A（Cookie 曲奇卡）+ 效果对照页 ① | 低多边形曲奇 + 麦田背景（源图比例即 1.5860），浅色高光美术 |
+| `cookie-card-silver.png` / `.webp` | 商品 A 的独立银色原图 | 上者的派生变体（仅去饱和 + 轻微提亮），用于 `silver` 效果演示 |
+| `panda-card.png` / `.webp` | 商品 B（Sad Panda 熊猫卡）+ 效果对照页 ④ | 低多边形熊猫 + 浅绿几何背景（主体抠图 + 背景合成） |
+| `panda-card-silver.png` / `.webp` | 商品 B 的独立银色原图 | 上者的派生银色变体 |
+
+生成命令（可复现，缺源图时会提示并跳过）：
+
+```bash
+python tools/make-provided-card.py
+```
+
+## 2. 中性临时占位素材（TEMP PLACEHOLDER）
+
+由 `npm run assets` 可复现生成，带明显的「TEMP PLACEHOLDER / 临时占位」斜向水印带、
+大字标题与「TEMP ASSET – NOT FINAL ARTWORK / 临时占位素材，非正式卡面」字样：
 
 | 文件 | 用途 | 配色主题 |
 | --- | --- | --- |
-| `cookie.png` / `cookie.webp` | 商品 A（Cookie）占位卡面 | 暖米色 |
-| `panda.png` / `panda.webp` | 商品 B（Sad Panda）占位卡面 | 浅绿灰 |
-| `panda-silver.png` / `panda-silver.webp` | Sad Panda 的独立银色原图，用于 `silver` 效果演示 | 中性银灰 |
+| `cookie.png` / `.webp` | 通用浅色占位（示例页 `examples/plain-html` 用 PNG 演示格式兼容） | 暖米色 |
+| `panda.png` / `.webp` | 通用浅色占位（效果对照页 ②） | 浅绿灰 |
+| `panda-silver.png` / `.webp` | 独立银色原图占位（效果对照页 ② 的 silver 列） | 中性银灰 |
+| `dark.png` / `.webp` | **深色测试卡面**（效果对照页 ③），用于暴露过曝/过暗 | 深蓝 |
 
-每张图都带有明显的“TEMP PLACEHOLDER / 临时占位”斜向水印带、大字商品名、
-以及“TEMP ASSET – NOT FINAL ARTWORK / 临时占位素材，非正式卡面”字样，
-目的是让人一眼看出这是占位素材而非正式卡面。
-
-## 尺寸与比例
+## 尺寸与比例要求
 
 - 像素尺寸：**1015 × 640**
-- 宽高比：**1.586 : 1**（1015 / 640 = 1.5859375，符合银行卡 ISO/IEC 7810 ID-1 的 1.586 比例）
-- 卡面圆角按 ISO 比例绘制：
-  - 水平半径 = 宽度的 **3.72%**
-  - 垂直半径 = 高度的 **5.89%**
-- 图像为 RGBA，圆角以外的区域透明。
+- 宽高比：**1.586 : 1**（1015 / 640 = 1.5859375，符合银行卡 ISO/IEC 7810 ID-1）
+- 卡面圆角按 ISO 比例：水平半径 = 宽度 **3.72%**，垂直半径 = 高度 **5.89%**
+- 图像为 RGBA，圆角以外区域透明
+- 格式：WebP 优先（体积更小），PNG 兼容；组件在 `imageFit: "contain"` 下完整显示、不裁切不拉伸
 
-## 生成方式（可复现）
+## 替换为正式卡面时
 
-素材由脚本可复现地生成，**不引入任何 npm 依赖**，仅需本机 Python 3 + Pillow
-（Pillow 需支持 WebP）。推荐使用 npm 脚本：
-
-```bash
-npm run assets
-```
-
-等价的直接调用：
-
-```bash
-node tools/make-placeholder-assets.mjs
-# 或跳过 Node 包装，直接运行 Python
-python tools/make-placeholder-assets.py
-```
-
-脚本行为：
-
-- 由 `tools/make-placeholder-assets.py` 使用 Pillow 绘制（4 倍超采样抗锯齿），
-  输出 PNG 与 WebP。
-- WebP 参数固定为 `quality=92, method=6`。
-- 生成结束后脚本会自动**自检**每个文件的真实格式（`PIL.Image.open().format`）、
-  像素尺寸与宽高比误差，并打印结果。
-- 若找不到 Python 或 Pillow，`tools/make-placeholder-assets.mjs` 会打印清晰的中文
-  提示并以退出码 `1` 结束。
-
-## 替换正式卡面时的要求
-
-1. 保持**相同的文件名与路径**，或同步更新组件中的引用。
-2. 建议保持 **1.586 : 1** 的银行卡比例（例如 1015 × 640），避免变形。
-3. 必须使用**自己制作**、拥有合法权利的素材；不得使用第三方版权素材。
-4. 替换后请移除图片中的“TEMP PLACEHOLDER / 临时占位”等占位标记。
+1. 保持相同文件名与路径，或同步更新引用（Demo 在 `src/demo/mock-data.ts`，对照页在 `examples/effects-gallery/index.html`）。
+2. 保持 1.586 : 1 比例（如 1015 × 640），避免变形。
+3. 只使用自制、拥有合法权利的素材。
+4. 替换后跑一次 `npm run build && npm run build:demo && npm run acceptance`：
+   16 项 `exposure.*` 检查会给出新卡面的曝光数值（判据：平均亮度偏移 ≤ 12、高光/暗部削波 ≤ 3%），
+   对照页 `examples/effects-gallery/index.html` 可同时目视复核。

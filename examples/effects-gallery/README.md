@@ -24,10 +24,10 @@ npm run dev            # 然后访问 http://localhost:5173/examples/effects-gal
 | 区块 | 说明 |
 | --- | --- |
 | 原始卡面参考（无特效） | 5 张原图（cookie / panda / panda-silver / dark / panda-card），并显示各自**实测平均亮度**、高光削波、暗部压死比例——作为“加特效前”的基线 |
-| ① 浅色卡面（暖米） | 4 种效果并排：`normal` / `holographic` / `glitter` / `silver` |
+| ① 项目提供的卡面（低多边形曲奇 + 麦田） | 4 种效果并排：`normal` / `holographic` / `glitter` / `silver`；浅色高光美术，最容易看出过曝 |
 | ② 浅色卡面（浅绿）+ 独立银色原图 | `silver` 一列使用 `silverImage`（推荐用法：银色原图自带金属质感，特效只加光泽） |
 | ③ 深色卡面（深蓝） | 深色美术最容易暴露过曝（反光冲白暗部）与过暗（反光压灰图案） |
-| ④ 项目提供的卡面 | 低多边形熊猫 + 浅绿几何背景合成成的 1015×640 卡面（`public/cards/panda-card.webp`，即 Demo 商品 B 的卡面）：含明确主体与明暗层次，最容易暴露过曝/过暗 |
+| ④ 项目提供的卡面（低多边形熊猫 + 浅绿几何背景） | 低多边形熊猫 + 浅绿几何背景合成成的 1015×640 卡面（`public/cards/panda-card.webp`，即 Demo 商品 B 的卡面）：含明确主体与明暗层次，最容易暴露过曝/过暗 |
 
 顶部控件（仅本页有效，不属于生产组件）：
 
