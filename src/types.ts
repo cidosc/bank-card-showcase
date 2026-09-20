@@ -16,7 +16,7 @@ import { BANK_CARD_SURFACES } from "./surfaces.js";
  */
 export type BankCardEffect = "normal" | "holographic" | "glitter" | "silver";
 
-/** 移动端触摸倾斜策略：`off`（默认，不干扰滚动）| `on`（允许触摸拖动倾斜）。 */
+/** 移动端触摸倾斜策略：`on`（默认，长按后拖动观赏倾斜）| `off`（完全不接管触摸）。 */
 export type BankCardTouchTilt = "off" | "on";
 
 /**
@@ -59,7 +59,12 @@ export interface BankCardOptions {
   pressScale?: number;
   /** 允许按住卡片拖动观赏（调整倾角）。默认 `true`。 */
   dragTilt?: boolean;
-  /** 移动端是否允许触摸倾斜。默认 `"off"`，避免干扰页面滚动。 */
+  /**
+   * 触屏是否允许触摸倾斜。默认 `"on"`：
+   * 长按（约 160ms、位移 ≤ 10px）卡面后拖动即可调整倾角（任意方向）；
+   * 快速滑动 / 轻点不接管手势，页面纵向滚动照常（根元素 `touch-action: pan-y`）。
+   * 传 `"off"` 可完全不接管触摸（触屏上卡片不倾斜，也不会被 tap 的粘滞 hover 影响）。
+   */
   touchTilt?: BankCardTouchTilt;
   /** 卡片宽高比（宽 / 高）。默认 `1.586`（银行卡 ISO/IEC 7810 ID-1）。 */
   aspectRatio?: number;

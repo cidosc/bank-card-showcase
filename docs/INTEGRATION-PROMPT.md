@@ -131,7 +131,7 @@ createBankCard(options) → {
 | `intensity` | `number` | `1` | 效果强度 0–1（只影响反光层不透明度） |
 | `pressScale` | `number` | `0.98` | 按下缩放（`1` = 关闭） |
 | `dragTilt` | `boolean` | `true` | 允许按住拖动调整倾角 |
-| `touchTilt` | `"off" \| "on"` | `"off"` | 移动端触摸倾斜（默认不干扰滚动） |
+| `touchTilt` | `"off" \| "on"` | `"on"` | 触屏触摸倾斜：长按后拖动观赏（快滑/轻点仍归页面滚动） |
 | `aspectRatio` | `number` | `1.586` | 宽高比（银行卡 ISO/IEC 7810 ID-1） |
 | `imageFit` | `"contain" \| "cover"` | `"contain"` | 完整显示、不裁切不拉伸 |
 | `respectReducedMotion` | `boolean` | `true` | 尊重系统"减少动态效果" |
@@ -153,7 +153,8 @@ createBankCard(options) → {
 - [ ] 悬停产生倾斜且 `|倾角| ≤ maxTilt`、永不翻面；鼠标移出约 1 秒内平滑回正。
 - [ ] 按下有轻微缩小（0.98）、松开复位；中途取消/失焦/隐藏不会卡在按下态。
 - [ ] 4 种效果切换正常，且**不明显改变卡面明暗**（判据：加特效前后平均亮度偏移 ≤ 12、高光削波 ≤ 3%）。
-- [ ] 移动端页面可正常滚动、卡面 `touch-action: pan-y`，触摸不接管倾斜。
+- [ ] 移动端页面可正常滚动、卡面 `touch-action: pan-y`；轻点不粘在最大倾角，长按后拖动可动态倾斜。
+- [ ] 触屏上长按不会弹系统图片菜单 / 上下文菜单；减少动效时触屏倾斜也完全关闭。
 - [ ] 系统开启"减少动态效果"时卡片静止（无过渡、无倾斜、无按压缩放）。
 - [ ] 反复 `destroy()` / `mount()` 不报错、无监听泄漏（浏览器 Performance/内存面板或 `getEventListeners` 抽查）。
 - [ ] 站点其它页面/组件样式不受影响：产物 CSS 中**没有**全局选择器（`:root` / `html` / `body` / `*`）。

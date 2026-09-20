@@ -67,7 +67,7 @@ import "./vendor/bank-card-showcase/bank-card-showcase.css";
 | `surface` | `"flat" \| "physical"` | `"flat"` | 卡面质感。`flat`＝轻量化平面风：投影极轻、无霓虹边缘/辉光、3D 透视更平（`1000px`）；`physical`＝较强实体感：保留底层较重的黑色投影与边缘高光（`600px` 透视）。只影响投影 / 边缘 / 透视，**不影响特效本身** | 默认 `flat`；暗色或沉浸式场景可试 `physical`；可在运行时 `update({ surface })` 切换 |
 | `pressScale` | `number` | `0.98` | 鼠标按下时的缩放反馈；`1` 表示关闭 | 夹紧 `0.9–1`；非法值回退 `1`（= 关闭） |
 | `dragTilt` | `boolean` | `true` | 允许按住卡片拖动调整倾角；`false` 时按下会**钉住当前倾角**（拖动不再改变角度，松开后回到指针对应的角度） | 默认保持 `true` |
-| `touchTilt` | `"off" \| "on"` | `"off"` | 移动端是否允许触摸倾斜；`off` 不接管手势，**不干扰页面滚动** | 默认保持 `"off"` |
+| `touchTilt` | `"off" \| "on"` | `"on"` | 触屏是否允许触摸倾斜。`on`：长按（约 160ms、位移 ≤ 10px）后拖动调整倾角（任意方向），该次手势不再滚动页面；轻点 / 快速滑动不接管手势，页面照常滚动（`touch-action: pan-y`）。`off`：完全不接管触摸 | 默认 `"on"`；需要“触屏完全不响应”时设 `"off"` |
 | `aspectRatio` | `number` | `1.586` | 卡片宽高比（宽 / 高，ISO/IEC 7810 ID-1 银行卡比例） | 夹紧 `1–3`；银行卡用 `1.586` |
 | `textureSeed` | `number \| undefined` | 由 `image` 派生 | 碎闪 / 纹理种子；同一张卡渲染稳定 | 需要跨版本稳定时显式传正整数 |
 | `respectReducedMotion` | `boolean` | `true` | 是否尊重 `prefers-reduced-motion: reduce`（为真时卡片完全静止） | 保持 `true` |
@@ -257,12 +257,20 @@ showcase.destroy();
 
 ## 6. 移动端、减少动效与可访问性
 
-**移动端**
+**移动端 / 触屏**
 
-- 默认 `touchTilt: "off"`：触摸不触发倾斜，且根元素使用 `touch-action: pan-y`，
-  **纵向滚动不受影响**；此时底层退化为纯 CSS hover 兜底（触摸设备基本不触发）。
-- 按压反馈只在 `pointerType === "mouse"` 时生效，触摸不会误触发缩放。
-- 确需触摸倾斜时设 `touchTilt: "on"`：触摸拖动会用于调整倾角，**请自行评估滚动体验**。
+- 默认 `touchTilt: "on"`，采用**长按门槛**区分「滚动 / 快滑」与「按住观赏」：
+  - 轻点、快速滑动：不接管手势，页面纵向滚动照常（根元素 `touch-action: pan-y`）；
+  - 长按（约 160ms、位移 ≤ 10px）后拖动：进入倾斜态（`data-bc-touch-tilt="true"`），
+    任意方向跟手调整倾角，该次手势不再滚动页面；松开后由弹簧回正。
+- **修复过的坑**：触屏浏览器在 tap 后会保持 `:hover`。底层卡片在非交互模式下用
+  `.holo-card:not(.holo-card--interactive):hover` 做纯 CSS 兜底，会被 tap 触发并“粘”在
+  最大倾角 + 高光（只能点其它区域恢复）。组件现在在触屏上把该兜底复位（`data-bc-touch="true"`
+  + `@media (hover: none)`），并默认改用真实的指针交互。
+- 长按不会弹出 iOS 的图片菜单 / Android 上下文菜单（`-webkit-touch-callout: none`，卡面 `img` 不接手手势）。
+- 鼠标按压反馈仍只在 `pointerType === "mouse"` 时生效；触屏长按进入倾斜时会用同一个 `--bc-press` 给一次轻微按压缩放作为反馈。
+- 需要触屏完全不响应（例如纯展示列表）时设 `touchTilt: "off"`。
+- 减少动效生效时，触屏倾斜与缩放同时关闭。
 
 **减少动效（`prefers-reduced-motion`）**
 
@@ -316,8 +324,9 @@ showcase.destroy();
 这是设计如此：`update({ image })` 只替换底层 `<img>` 的 `src` / `alt`（并视需要重新派生纹理种子），
 不重建实例、不丢事件。
 
-**Q6. 为什么移动端按住拖动没有倾斜？**
-默认 `touchTilt: "off"`（为了不干扰页面滚动）。需要触摸倾斜时显式设 `touchTilt: "on"`。
+**Q6. 触屏上怎么倾斜卡片？轻点为什么没有反应？**
+默认 `touchTilt: "on"`，但采用**长按**门槛：轻点 / 快速滑动留给页面滚动，**按住卡面约 160ms
+后拖动**才会进入倾斜（任意方向）。若希望触屏完全不响应，设 `touchTilt: "off"`。
 
 **Q7. 为什么系统开启「减少动效」后卡片完全不动？**
 默认 `respectReducedMotion: true`，这是刻意的可访问性行为。详见第 6 节。

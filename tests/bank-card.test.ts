@@ -2,8 +2,12 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 import { createBankCard } from "../src/bank-card/bank-card.js";
 import {
+  TOUCH_LONG_PRESS_MS,
+  TOUCH_TILT_ATTR,
   attachPressFeedback,
+  attachTouchTilt,
   clampPressScale,
+  hasTouchInput,
   isFinePointer,
   prefersReducedMotion,
   watchReducedMotion,
@@ -16,10 +20,16 @@ const IMG_ALT = "data:image/webp;base64,yy";
 const SILVER = "data:image/webp;base64,silver";
 
 /** 不依赖 PointerEvent（jsdom 未必提供）：用普通 Event + 关键属性兜底。 */
-function pointerEvent(type: string, init: { pointerType?: string; button?: number } = {}): Event {
+function pointerEvent(
+  type: string,
+  init: { pointerType?: string; button?: number; pointerId?: number; clientX?: number; clientY?: number } = {},
+): Event {
   const event = new Event(type, { bubbles: true, cancelable: true });
   Object.defineProperty(event, "pointerType", { value: init.pointerType ?? "mouse" });
   Object.defineProperty(event, "button", { value: init.button ?? 0 });
+  Object.defineProperty(event, "pointerId", { value: init.pointerId ?? 1 });
+  Object.defineProperty(event, "clientX", { value: init.clientX ?? 0 });
+  Object.defineProperty(event, "clientY", { value: init.clientY ?? 0 });
   return event;
 }
 
@@ -241,7 +251,7 @@ describe("参数归一化与夹紧", () => {
     expect(card.options.intensity).toBe(1);
     expect(card.options.pressScale).toBeCloseTo(0.98, 5);
     expect(card.options.dragTilt).toBe(true);
-    expect(card.options.touchTilt).toBe("off");
+    expect(card.options.touchTilt).toBe("on");
     expect(card.options.aspectRatio).toBeCloseTo(1.586, 5);
     expect(card.options.respectReducedMotion).toBe(true);
     expect(card.options.imageFit).toBe("contain");
@@ -303,6 +313,15 @@ describe("参数归一化与夹紧", () => {
     expect(nan.options.aspectRatio).toBeCloseTo(1.586, 5);
   });
 
+  it("touchTilt 默认 on；`off` 保留；非法值回退 on", () => {
+    expect(makeCard({ image: IMG }).options.touchTilt).toBe("on");
+    expect(makeCard({ image: IMG, touchTilt: "on" }).options.touchTilt).toBe("on");
+    expect(makeCard({ image: IMG, touchTilt: "off" }).options.touchTilt).toBe("off");
+    expect(
+      makeCard({ image: IMG, touchTilt: "nonsense" as unknown as "on" }).options.touchTilt,
+    ).toBe("on");
+  });
+
   it("根元素只有 bc-card（+ 可选 className）与正确的数据属性", () => {
     const card = makeCard({ image: IMG, effect: "holographic", className: "bc-extra custom" });
     expect(card.element.classList.contains("bc-card")).toBe(true);
@@ -310,6 +329,9 @@ describe("参数归一化与夹紧", () => {
     expect(card.element.classList.contains("custom")).toBe(true);
     expect(card.element.dataset.bcEffect).toBe("holographic");
     expect(card.element.dataset.bcSurface).toBe("flat");
+    // jsdom 中无触摸能力（maxTouchPoints=0 / 无 any-pointer:coarse）→ "false"。
+    expect(card.element.dataset.bcTouch).toBe("false");
+    expect(card.element.hasAttribute(TOUCH_TILT_ATTR)).toBe(false);
     expect(card.element.style.getPropertyValue("--bc-aspect")).toBe(String(1.586));
     expect(card.element.style.getPropertyValue("--bc-press")).toBe("1");
     // 根元素内只有一个子元素：底层 .holo-card。
@@ -551,6 +573,162 @@ describe("按压反馈 attachPressFeedback", () => {
   });
 });
 
+describe("触摸倾斜 attachTouchTilt（长按后拖动）", () => {
+  it("hasTouchInput 识别 navigator.maxTouchPoints", () => {
+    vi.stubGlobal("navigator", { maxTouchPoints: 0 });
+    expect(hasTouchInput()).toBe(false);
+    vi.stubGlobal("navigator", { maxTouchPoints: 5 });
+    expect(hasTouchInput()).toBe(true);
+  });
+
+  it("长按后进入倾斜；位移超过容差则取消长按；触摸以外的指针不参与", () => {
+    vi.useFakeTimers();
+    try {
+      const root = document.createElement("div");
+      document.body.appendChild(root);
+      const seen: boolean[] = [];
+      const dispose = attachTouchTilt(root, { onEngageChange: (value) => seen.push(value) });
+
+      root.dispatchEvent(pointerEvent("pointerdown", { pointerType: "mouse" }));
+      vi.advanceTimersByTime(TOUCH_LONG_PRESS_MS + 20);
+      expect(root.hasAttribute(TOUCH_TILT_ATTR)).toBe(false);
+
+      root.dispatchEvent(pointerEvent("pointerdown", { pointerType: "touch", pointerId: 7, clientX: 10, clientY: 10 }));
+      vi.advanceTimersByTime(TOUCH_LONG_PRESS_MS - 20);
+      expect(root.hasAttribute(TOUCH_TILT_ATTR)).toBe(false);
+      vi.advanceTimersByTime(40);
+      expect(root.getAttribute(TOUCH_TILT_ATTR)).toBe("true");
+
+      window.dispatchEvent(pointerEvent("pointerup", { pointerType: "touch", pointerId: 7 }));
+      expect(root.hasAttribute(TOUCH_TILT_ATTR)).toBe(false);
+
+      // 长按判定前移动超过容差 → 该次手势不再进入倾斜（视为滚动 / 快滑）。
+      root.dispatchEvent(pointerEvent("pointerdown", { pointerType: "touch", pointerId: 8, clientX: 0, clientY: 0 }));
+      root.dispatchEvent(
+        pointerEvent("pointermove", { pointerType: "touch", pointerId: 8, clientX: 40, clientY: 0 }),
+      );
+      vi.advanceTimersByTime(TOUCH_LONG_PRESS_MS + 50);
+      expect(root.hasAttribute(TOUCH_TILT_ATTR)).toBe(false);
+      window.dispatchEvent(pointerEvent("pointerup", { pointerType: "touch", pointerId: 8 }));
+
+      expect(seen).toEqual([true, false]);
+      dispose();
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+
+  it("未进入倾斜前拦截 pointermove（不让底层抖动）；进入后放行", () => {
+    vi.useFakeTimers();
+    try {
+      const root = document.createElement("div");
+      const child = document.createElement("div");
+      root.appendChild(child);
+      document.body.appendChild(root);
+      const reached = vi.fn();
+      child.addEventListener("pointermove", reached);
+      const dispose = attachTouchTilt(root);
+
+      root.dispatchEvent(pointerEvent("pointerdown", { pointerType: "touch", pointerId: 1, clientX: 5, clientY: 5 }));
+      child.dispatchEvent(pointerEvent("pointermove", { pointerType: "touch", pointerId: 1, clientX: 6, clientY: 5 }));
+      expect(reached).not.toHaveBeenCalled();
+
+      vi.advanceTimersByTime(TOUCH_LONG_PRESS_MS + 10);
+      child.dispatchEvent(pointerEvent("pointermove", { pointerType: "touch", pointerId: 1, clientX: 20, clientY: 30 }));
+      expect(reached).toHaveBeenCalledTimes(1);
+
+      dispose();
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+
+  it("进入倾斜后对 touchmove 调用 preventDefault；未进入时交给页面滚动", () => {
+    vi.useFakeTimers();
+    try {
+      const root = document.createElement("div");
+      document.body.appendChild(root);
+      const dispose = attachTouchTilt(root);
+
+      const idleMove = new Event("touchmove", { bubbles: true, cancelable: true });
+      root.dispatchEvent(idleMove);
+      expect(idleMove.defaultPrevented).toBe(false);
+
+      root.dispatchEvent(pointerEvent("pointerdown", { pointerType: "touch", pointerId: 2, clientX: 0, clientY: 0 }));
+      vi.advanceTimersByTime(TOUCH_LONG_PRESS_MS + 10);
+      const engagedMove = new Event("touchmove", { bubbles: true, cancelable: true });
+      root.dispatchEvent(engagedMove);
+      expect(engagedMove.defaultPrevented).toBe(true);
+
+      dispose();
+      const afterDispose = new Event("touchmove", { bubbles: true, cancelable: true });
+      root.dispatchEvent(afterDispose);
+      expect(afterDispose.defaultPrevented).toBe(false);
+      expect(root.hasAttribute(TOUCH_TILT_ATTR)).toBe(false);
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+
+  it("enabled=false 时不进入倾斜；blur / visibilitychange 会退出倾斜", () => {
+    vi.useFakeTimers();
+    try {
+      const root = document.createElement("div");
+      document.body.appendChild(root);
+      const disabled = attachTouchTilt(root, { enabled: () => false });
+      root.dispatchEvent(pointerEvent("pointerdown", { pointerType: "touch", pointerId: 3 }));
+      vi.advanceTimersByTime(TOUCH_LONG_PRESS_MS + 50);
+      expect(root.hasAttribute(TOUCH_TILT_ATTR)).toBe(false);
+      disabled();
+
+      const dispose = attachTouchTilt(root);
+      root.dispatchEvent(pointerEvent("pointerdown", { pointerType: "touch", pointerId: 4 }));
+      vi.advanceTimersByTime(TOUCH_LONG_PRESS_MS + 10);
+      expect(root.getAttribute(TOUCH_TILT_ATTR)).toBe("true");
+      window.dispatchEvent(new Event("blur"));
+      expect(root.hasAttribute(TOUCH_TILT_ATTR)).toBe(false);
+
+      root.dispatchEvent(pointerEvent("pointerdown", { pointerType: "touch", pointerId: 5 }));
+      vi.advanceTimersByTime(TOUCH_LONG_PRESS_MS + 10);
+      document.dispatchEvent(new Event("visibilitychange"));
+      expect(root.hasAttribute(TOUCH_TILT_ATTR)).toBe(false);
+      dispose();
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+
+  it("BankCard 默认在触摸时长按进入倾斜，`touchTilt: off` / `dragTilt: false` 时不进入", () => {
+    vi.useFakeTimers();
+    try {
+      const host = document.createElement("div");
+      document.body.appendChild(host);
+      const card = makeCard({ image: IMG });
+      card.mount(host);
+      card.element.dispatchEvent(pointerEvent("pointerdown", { pointerType: "touch", pointerId: 11 }));
+      vi.advanceTimersByTime(TOUCH_LONG_PRESS_MS + 10);
+      expect(card.element.getAttribute(TOUCH_TILT_ATTR)).toBe("true");
+      expect(card.element.style.getPropertyValue("--bc-press")).toBe(String(card.options.pressScale));
+      window.dispatchEvent(pointerEvent("pointerup", { pointerType: "touch", pointerId: 11 }));
+      expect(card.element.style.getPropertyValue("--bc-press")).toBe("1");
+
+      card.update({ touchTilt: "off" });
+      card.element.dispatchEvent(pointerEvent("pointerdown", { pointerType: "touch", pointerId: 12 }));
+      vi.advanceTimersByTime(TOUCH_LONG_PRESS_MS + 10);
+      expect(card.element.hasAttribute(TOUCH_TILT_ATTR)).toBe(false);
+      window.dispatchEvent(pointerEvent("pointerup", { pointerType: "touch", pointerId: 12 }));
+
+      card.update({ touchTilt: "on", dragTilt: false });
+      card.element.dispatchEvent(pointerEvent("pointerdown", { pointerType: "touch", pointerId: 13 }));
+      vi.advanceTimersByTime(TOUCH_LONG_PRESS_MS + 10);
+      expect(card.element.hasAttribute(TOUCH_TILT_ATTR)).toBe(false);
+      window.dispatchEvent(pointerEvent("pointerup", { pointerType: "touch", pointerId: 13 }));
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+});
+
 describe("matchMedia 缺失与减少动效", () => {
   it("matchMedia 不存在时不抛错，并视为精细指针 / 非减少动效", () => {
     vi.stubGlobal("matchMedia", undefined);
@@ -647,6 +825,19 @@ describe("样式约束", () => {
     expect(css).toContain("scale(var(--bc-press, 1))");
     expect(css).toContain('[data-bc-reduced-motion="true"]');
     expect(css).toContain('[data-bc-press="off"]');
+  });
+
+  it("触屏修正：粘滞 hover 复位、长按手势不被原生菜单 / 拖拽抢走", () => {
+    // 触屏上非交互模式的 hover 兜底必须复位为静止值（否则 tap 后卡片钉在最大倾角）。
+    expect(css).toMatch(
+      /\[data-bc-touch="true"\][^{]*\.bc-card__holo:not\(\.holo-card--interactive\):hover[^{]*\{/,
+    );
+    expect(css).toMatch(
+      /@media \(hover: none\)[^{]*\{[^@]*\.bc-card__holo:not\(\.holo-card--interactive\):hover/,
+    );
+    // 触屏长按不弹 iOS 菜单、图片不抢手势。
+    expect(css).toContain("-webkit-touch-callout: none");
+    expect(css).toMatch(/\.bc-card img\s*\{[^}]*-webkit-user-drag: none[^}]*pointer-events: none/);
   });
 
   it("质感：flat 覆盖较重的投影、physical 保留实体感（都不影响特效层）", () => {

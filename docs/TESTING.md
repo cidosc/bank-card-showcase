@@ -13,8 +13,8 @@
 | 层级 | 命令 | 规模 | 结果 |
 | --- | --- | --- | --- |
 | 类型检查 | `npm run typecheck` | `tsc --noEmit` 严格模式 | **0 error** |
-| 单元 / 集成 | `npm test` | 2 个文件 / **59 个用例** | **59 passed**（约 2.3s，jsdom） |
-| 端到端（真实 Chrome） | `npm run acceptance` | **89 个检查项** + 17 张截图 | **89 passed / 0 failed**（含 16 项曝光回归 + dev 工作流回归） |
+| 单元 / 集成 | `npm test` | 2 个文件 / **67 个用例** | **67 passed**（约 1.7s，jsdom） |
+| 端到端（真实 Chrome） | `npm run acceptance` | **96 个检查项** + 19 张截图 | **96 passed / 0 failed**（含 16 项曝光回归 + 触控适配回归 + dev 工作流回归） |
 | 基线校验 | `npm run baseline` | 对比 `acceptance-report.json` 里的代码/产物指纹 | 一致（漂移则退出码 1） |
 
 > **关于数字的读法**：弹簧动画与截图时序会引入小幅抖动（同一产物连续运行，
@@ -58,8 +58,11 @@ node tools/acceptance.mjs --out <dir> --chrome <path>   # 可选参数
 | 银色卡使用独立原图 | `effect.silver.image` | `img.src = panda-silver.webp`（切回 holographic 后回到 panda.webp） |
 | 减少动态效果正常生效 | `reduced.flag / static / transition / resume` | `data-bc-reduced-motion=true`、`interactive=false`、悬停与按压后 `--rotate = 0`、`transition-duration = 0s`；取消系统设置后恢复交互 |
 | 重复挂载和卸载不产生明显错误 | `lifecycle.stress` | 连续 5 次 destroy → mount 后仍只有 1 个 `.bc-card` / 1 个 `.bc-showcase`，且仍可正常倾斜；全程 0 console 错误 |
-| 移动端滚动不受影响 | `mobile.touchAction / scroll / scrollAfterTouch` | 卡面 `touch-action: pan-y`；`scrollY=400`（页面高 2036）；触摸拖动后仍可滚动且无横向溢出 |
-| 触摸默认不接管倾斜 | `mobile.touchTilt` | 移动端模拟下 `hover:hover and pointer:fine = false` → `interactive=false`（不绑定指针交互） |
+| 移动端滚动不受影响 | `mobile.touchAction / scroll / quickSwipeScrolls` | 卡面 `touch-action: pan-y`；`scrollY=400`（页面高 2263）；快速上滑仍滚动（`scrollY 0 → 45`）且卡面不倾斜 |
+| 触控端轻点不粘滞 | `mobile.tapNoSticky` | 触摸模拟下轻点卡面 500ms 后 `--rotate-x/y = (0, 0)`、`--card-opacity = 0`（修复前会粘在 `7deg / -19deg` + 高光） |
+| 触控端长按可动态交互 | `mobile.touchDevice / longPressTilt / longPressScrollLock / touchRelease` | `maxTouchPoints=5`、`data-bc-touch=true`、默认开启触摸倾斜；长按 260ms 后拖动实测 `rotate=(-5.6, 4.4)`、`data-bc-touch-tilt=true`；该次手势 `scrollY 0 → 0`（不滚动）；松开后回正为 `(0, 0)` |
+| 触摸完全关闭时也不粘滞 | `mobile.touchTiltOffNoSticky / touchTiltOffNoDrag` | `?touchTilt=off`：`interactive=false`，轻点与长按拖动均保持 `rotate=(0, 0)`、`cardOpacity=0` |
+| 产物 CSS 含触屏保护 | `styles.touchHoverGuard` | `[data-bc-touch=true]` hover 复位、`@media(hover:none)` 兜底、`-webkit-touch-callout:none`、`img` 不接手手势 —— 4 项均命中（正则容忍压缩后的去引号/去空格写法） |
 | Chrome / WebKit 检查 | 见第 4 节 | Chrome 全量实测通过；WebKit **未实测**（无可用环境），如实说明 |
 | 闪卡不过曝 / 不过暗 | `exposure.*`（16 项） | 4 张卡面 × 4 种效果：**最大平均亮度偏移 9.5**（判据 ≤ 12）、**最大高光削波 0.01%**（判据 ≤ 3%）。详见第 7 节 |
 | 无外部 CDN 依赖 | `assets.selfHosted` | 页面声明外部资源 **0** 个，样式表 `@import` / `url(http…)` **0** 处 |
@@ -74,8 +77,8 @@ node tools/acceptance.mjs --out <dir> --chrome <path>   # 可选参数
 
 ## 3. 由单元测试覆盖的部分
 
-`tests/bank-card.test.ts`（32 项）与 `tests/product-showcase.test.ts`（27 项）覆盖：
-（其中 54 项针对会进入产物的组件代码，5 项针对只在 Demo 存在的开发控件面板 `src/demo/dev-panel.ts`）
+`tests/bank-card.test.ts`（40 项）与 `tests/product-showcase.test.ts`（27 项）覆盖：
+（其中 62 项针对会进入产物的组件代码，5 项针对只在 Demo 存在的开发控件面板 `src/demo/dev-panel.ts`）
 
 - 效果映射与强度公式：`intensity` 只降低反光不透明度、**永不提高亮度上限**；只有 `glitter`
   需要纹理种子，只有 `silver` 使用银色原图；`seedFromImage` 对同一 URL 稳定。
@@ -86,9 +89,14 @@ node tools/acceptance.mjs --out <dir> --chrome <path>   # 可选参数
   interactive / aspectRatio` 时重建底层实例且不残留旧节点。
 - 按压反馈：`pointerup / pointercancel / blur / visibilitychange` 四种中断都会复位；
   触摸与右键不触发；`enabled=false` 时不触发。
+- 触控适配（`attachTouchTilt`）：长按 `160ms` 后进入（`data-bc-touch-tilt`）、位移超 10px 取消、
+  进入前捕获阶段拦截 `pointermove`、进入后 `touchmove.preventDefault()`、
+  `pointerup / blur / visibilitychange` 退出、`enabled=false` 不生效、卸载后不再拦截；
+  BankCard 上默认开启，`touchTilt: "off"` / `dragTilt: false` 时关闭；
+  `hasTouchInput()` 依据 `navigator.maxTouchPoints`；根元素带 `data-bc-touch` 属性。
 - 减少动效：`matchMedia` 缺失时不抛错，`respectReducedMotion` 开关与 change 监听注销。
 - 样式约束：组件 CSS 中**不存在** `:root` / 文档元素 / 通配符等全局选择器；
-  `.bc-card` 上重新声明了底层所需的全部变量。
+  `.bc-card` 上重新声明了底层所需的全部变量；含触屏 hover 复位与长按保护的规则。
 
 `intensity` 的端到端表现（无法在 Demo 控件里调整）由上述单元测试覆盖，浏览器侧只验证了
 各效果的默认档位。
@@ -106,8 +114,11 @@ node tools/acceptance.mjs --out <dir> --chrome <path>   # 可选参数
    - 组件样式对 `-webkit-` 前缀做了必要处理：`-webkit-tap-highlight-color`、
      `-webkit-user-select`、`-webkit-user-drag`。
    - 结论：**未在 Safari 上运行过**，不能声称 WebKit 通过；建议移植到正式站点时补一次真机 / WebKit 验证。
-2. **触屏真机未实测**：浏览器侧只验证了移动视口 + 触摸模拟（`touch-action`、滚动、
-   媒体查询判定）。真实触摸拖动倾斜（`touchTilt: "on"`）只在单元测试层面覆盖。
+2. **触屏真机未实测**：已在真实 Chrome 中用 `Emulation.setTouchEmulationEnabled`（`mobile: true`、
+   `maxTouchPoints = 5`）真实派发触摸事件，覆盖轻点不粘滞 / 长按拖动倾斜 / 手势滚动锁 /
+   快滑仍滚动 / `touchTilt: off` 等 8 项 + 1 项产物 CSS 检查（见第 9 节）；
+   但**未在真机（iOS / Android）与 WebKit 上跑过**，iOS Safari 的 `:hover` 粘滞与
+   `touchmove.preventDefault()` 行为建议真机补测一次。
 3. **宿主浏览器工具不可用**：本次验收期间，托管浏览器（betterwright）因本机 Chrome 153
    与启动器 151 的 profile 版本冲突无法启动，因此改用自建的 CDP 验收脚本完成等价的
    真实浏览器验证。修复方式（不丢登录态）：把 `BETTERWRIGHT_HOME` 指向独立目录，或删除
@@ -240,3 +251,59 @@ CDP 独立复跑 `examples/plain-html`）。复审提出的问题与处理：
 
 **WebP 可读性**：`layout.image@*` 与 `effect.productSwitchIn` 现在都显式断言
 `naturalWidth/Height === 1015×640` 且 `src` 以 `.webp` 结尾 —— 用证据说明 WebP 能正常解码渲染（不是只写了路径）。
+
+---
+
+## 9. 触控端（移动端）适配记录（发现并修复的真实 bug）
+
+**现象（用户真机实测反馈）**：触屏网页里点一下卡面，卡片就被钉在某个大倾角并触发闪卡高光，
+只有点其它非卡面区域才恢复；长按滑动卡面也没有任何动态交互。
+
+**根因（定位到具体规则）**：触屏上默认 `touchTilt: "off"` → 底层 `@kongyo2/cards-css`
+不进入交互模式（不添加 `holo-card--interactive`），于是命中它自带的纯 CSS 兜底：
+
+```css
+.holo-card:not(.holo-card--interactive):hover {
+  --pointer-x: 25%; --pointer-y: 10%; --card-scale: 1.1; --card-opacity: 1;
+  --rotate-x: 7deg; --rotate-y: -19deg; --pointer-from-center: 0.9; ...
+}
+```
+
+触屏浏览器在 tap 之后会**保持 `:hover`（粘滞）**，因此卡片被钉在该姿态、高光层不透明度为 1；
+同时 `:hover` 不会产生 `pointermove`，所以拖动也不会有任何倾斜 —— 两个症状同一根因。
+
+**修复 / 适配**（不改第三方源码；策略细节见 `SPEC.md` §7.15）：
+
+1. `touchTilt` 默认改为 `"on"`，触屏改用**真实指针交互**（长按门槛，见下）；
+2. 新增 `attachTouchTilt()`（`src/bank-card/pointer-feedback.ts`）：
+   - 长按门槛 `160ms` + 位移容差 `10px`：轻点 / 快滑不接管手势；
+   - 未进入倾斜前在**捕获阶段**拦截 `pointermove`（滚动时卡面不抖动）；
+   - 进入后（`data-bc-touch-tilt="true"`）对 `touchmove` 调 `preventDefault()`，冻结该次手势的滚动，
+     任意方向跟手调整倾角；松开后底层弹簧回正；
+   - `pointerup / pointercancel / blur / visibilitychange` 均会退出倾斜态；
+3. 触屏上把非交互模式的 hover 兜底复位为静止值（根元素 `data-bc-touch="true"` +
+   `@media (hover: none), (any-pointer: coarse)` 双保险）；
+4. `-webkit-touch-callout: none` + 卡面 `img { pointer-events: none }`：长按不弹 iOS 图片菜单 /
+   Android 上下文菜单，手势不被原生菜单抢走；
+5. Demo 新增 `?touchTilt=off|on` 查询参数与状态行，用于真机 / 脚本对比。
+
+**实测证据**（`npm run acceptance`，真实 Chrome + `Emulation.setTouchEmulationEnabled`，
+`mobile: true`，390×844，`maxTouchPoints = 5`）：
+
+| 检查 | 结果 |
+| --- | --- |
+| `mobile.touchDevice` | `maxTouchPoints=5`、`data-bc-touch=true`、`interactive=true`（默认开启触摸倾斜） |
+| `mobile.tapNoSticky` | 轻点后 500ms：`rotate=(0, 0)`、`cardOpacity=0` —— **修复前是 `(7, -19)` + 高光** |
+| `mobile.longPressTilt` | 长按 260ms 后拖动：`data-bc-touch-tilt=true`、`rotate=(-5.6, 4.4)`（可动态交互） |
+| `mobile.longPressScrollLock` | 同一手势 `scrollY 0 → 0`（进入倾斜后不滚动页面） |
+| `mobile.touchRelease` | 松开 1.1s 后 `rotate=(0, 0)`、`data-bc-touch-tilt` 属性已移除 |
+| `mobile.quickSwipeScrolls` | 快速上滑 `scrollY 0 → 45`、卡面 `rotate=(0, 0)`、无横向溢出（390/390） |
+| `mobile.touchTiltOffNoSticky` / `NoDrag` | `?touchTilt=off`：`interactive=false`，轻点与长按拖动均 `rotate=(0, 0)`、`cardOpacity=0` |
+| `styles.touchHoverGuard` | 产物 CSS 含 `[data-bc-touch=true]` hover 复位、`@media(hover:none)` 兜底、`touch-callout`、`img pointer-events:none` |
+
+截图：`acceptance-artifacts/mobile-touch-longpress.png`（长按进入倾斜、明显 3D 透视）、
+`mobile-touchtilt-off.png`（`touchTilt: "off"` 静止）、`mobile-390.png`。
+
+**兼容性说明**：以上验证基于 Chrome 触摸模拟；**真机触屏尚未实测**（无可用真机 / WebKit 环境），
+但实现只依赖 Pointer Events、`touch-action`、`touchmove.preventDefault()` 与 CSS 媒体查询
+（均为 Safari 15+ 能力），且 `pointercancel` / `blur` / `visibilitychange` 都做了兜底复位。

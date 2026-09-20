@@ -125,7 +125,7 @@ card.mount("#mount");   // #mount 里需要有一个承载容器元素
 | --- | --- |
 | 指针交互 | 3D 倾斜、弹簧回位、光泽/高光跟随指针（由底层库提供，包装层不重复实现倾斜算法） |
 | 按压缩放 | 鼠标按下时缩放，默认 `0.98`；松开 / 中断 / 失焦 / 切后台都会复位，不会卡在按下态 |
-| 触摸策略 | 默认 `touchTilt: "off"`，移动端不接管手势，**不干扰页面滚动**（CSS `touch-action: pan-y`） |
+| 触摸策略 | 默认 `touchTilt: "on"`：触屏上**长按（约 160ms）卡面后拖动**即可调整倾角（任意方向）。轻点 / 快速滑动不接管手势，页面纵向滚动照常（`touch-action: pan-y`）；`off` 可完全不接管触摸 |
 | 减少动效 | 默认尊重 `prefers-reduced-motion: reduce`：卡片完全静止（无倾斜、无缩放、无过渡） |
 | 生命周期 | `mount` / `update` / `setEffect` / `destroy`；`element` / `options` / `destroyed` 三个只读属性 |
 | 商品容器 | `createProductShowcase` 渲染名称、说明、价格、库存、操作按钮（桌面左右、移动端上下布局） |

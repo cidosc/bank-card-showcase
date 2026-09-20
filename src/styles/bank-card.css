@@ -73,6 +73,8 @@
   /* 允许纵向滚动，仅在横向 / 拖拽时接管，避免移动端干扰页面滚动 */
   touch-action: pan-y;
   -webkit-tap-highlight-color: transparent;
+  /* iOS 长按卡面不弹“存储图片 / 拷贝”菜单，长按专用于触摸倾斜 */
+  -webkit-touch-callout: none;
   -webkit-user-select: none;
   user-select: none;
 }
@@ -126,9 +128,64 @@
   transform: none;
 }
 
-/* 鼠标按住 / 拖拽时的光标提示 */
+/* 鼠标按住 / 触屏长按进入倾斜时的光标提示 */
 .bc-card[data-bc-dragging="true"] {
   cursor: grabbing;
+}
+
+/*
+ * 触屏（无 hover / 粗指针）上的“粘滞 hover”修正。
+ *
+ * 背景：底层卡片在**非交互**模式下用 `.holo-card:not(.holo-card--interactive):hover`
+ * 作为纯 CSS 兜底（固定 `--rotate-x: 7deg / --rotate-y: -19deg / --card-scale: 1.1`
+ * 与 `--card-opacity: 1`）。触屏浏览器在 tap 后会保持 `:hover`，于是卡片被钉在
+ * 最大倾角并点亮高光层，直到点击其它区域才复位。
+ *
+ * 处理：触屏环境下仅对 hover 兜底把变量复位为静止值 —— 不改变底层源码，
+ * 也不影响鼠标设备上的兜底效果（桌面上的卡片本身是交互态，选择器已被 `:not()` 排除）；
+ * 触屏的倾斜改为由 `attachTouchTilt` 的长按指针交互提供。
+ */
+.bc-card[data-bc-touch="true"] .bc-card__holo:not(.holo-card--interactive):hover {
+  --pointer-x: 50%;
+  --pointer-y: 50%;
+  --pointer-from-center: 0;
+  --pointer-from-top: 0;
+  --pointer-from-left: 0;
+  --pointer-dx: 0;
+  --pointer-dy: 0;
+  --card-scale: 1;
+  --card-opacity: 0;
+  --translate-x: 0px;
+  --translate-y: 0px;
+  --rotate-x: 0deg;
+  --rotate-y: 0deg;
+  --background-x: 50%;
+  --background-y: 50%;
+  --tilt-x: 0;
+  --tilt-y: 0;
+}
+
+/* 媒体查询兜底：即使 JS 未能标记 `data-bc-touch`，触屏上也不允许粘滞 hover */
+@media (hover: none), (any-pointer: coarse) {
+  .bc-card .bc-card__holo:not(.holo-card--interactive):hover {
+    --pointer-x: 50%;
+    --pointer-y: 50%;
+    --pointer-from-center: 0;
+    --pointer-from-top: 0;
+    --pointer-from-left: 0;
+    --pointer-dx: 0;
+    --pointer-dy: 0;
+    --card-scale: 1;
+    --card-opacity: 0;
+    --translate-x: 0px;
+    --translate-y: 0px;
+    --rotate-x: 0deg;
+    --rotate-y: 0deg;
+    --background-x: 50%;
+    --background-y: 50%;
+    --tilt-x: 0;
+    --tilt-y: 0;
+  }
 }
 
 /*
@@ -172,8 +229,11 @@
   border-radius: var(--card-radius);
 }
 
-/* 卡面图不参与浏览器原生拖拽 / 文本选择，保证“按住拖动观赏”不被抢走手势 */
+/* 卡面图不参与浏览器原生拖拽 / 文本选择，也不接手长按手势
+ * （`pointer-events: none` 使长按目标落在 .holo-card__rotator 上，避免 Android
+ * 长按图片弹出上下文菜单；指针交互由底层绑定在 rotator 上完成）。 */
 .bc-card img {
   -webkit-user-drag: none;
   user-select: none;
+  pointer-events: none;
 }

@@ -265,7 +265,8 @@ function unmountCard(el) {
    因此主题换版、插件改动样式不会让组件失效。
 6. **不要改 WooCommerce Core，也不要直接改父主题模板**；模板改动放在子主题里。
 7. **生产发布前**先在隔离 staging 验证：比例 1.586、无横向溢出、效果切换、
-   `prefers-reduced-motion`、移动端滚动不受影响（验收清单见 [`TESTING.md`](TESTING.md)）。
+   `prefers-reduced-motion`、移动端滚动不受影响且长按可倾斜（验收清单见 [`TESTING.md`](TESTING.md)）。
+   触屏行为可用 Demo 的 `?touchTilt=off|on` 参数在真机上快速对比。
 8. **不提交密钥**，不把真实订单 / 客户数据写进前端数据或示例。
 
 ---

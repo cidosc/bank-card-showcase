@@ -560,6 +560,10 @@ const PROBE = `(() => {
     showcaseCount: document.querySelectorAll(".bc-showcase").length,
     interactive: holo ? holo.classList.contains("holo-card--interactive") : null,
     touchAction: card ? getComputedStyle(card).touchAction : null,
+    // 触屏适配探针：触摸能力属性 / 长按倾斜状态 / 实际触摸点数
+    touchAttr: card ? card.dataset.bcTouch : null,
+    touchTiltAttr: card ? card.getAttribute("data-bc-touch-tilt") : null,
+    maxTouchPoints: typeof navigator !== "undefined" && typeof navigator.maxTouchPoints === "number" ? navigator.maxTouchPoints : 0,
     cardTransition: card ? getComputedStyle(card).transitionDuration : null,
     finePointer: window.matchMedia("(hover: hover) and (pointer: fine)").matches,
     scrollW: document.documentElement.scrollWidth,
@@ -1270,6 +1274,9 @@ async function main() {
     // ---------------------------------------------------------------------
     // 组 6：移动端滚动与触摸
     // ---------------------------------------------------------------------
+    // 回归对象（用户实测反馈）：
+    //   ① 轻点卡面后被粘滞的 :hover 兜底钉在最大倾角并点亮高光，只能点其它区域恢复；
+    //   ② 长按滑动卡面没有任何动态交互。
     await page.setViewport({ width: 390, height: 844, mobile: true, deviceScaleFactor: 2 });
     await page.open(url);
     const mobile1 = await page.evaluate("window.__bcProbe()");
@@ -1288,28 +1295,113 @@ async function main() {
       mobile2.scrollY > 100 && mobile2.pageH > mobile2.innerW,
       `scrollY=${mobile2.scrollY}, 页面高度=${mobile2.pageH}`,
     );
-    if (mobile1.finePointer) {
-      report.check("mobile.touchTilt", "触摸设备默认不接管倾斜", "skip", `headless 仍报告 hover:hover/pointer:fine，无法在真实触摸设备语义下断言（单测已覆盖 touchTilt 逻辑）`);
-    } else {
-      report.check(
-        "mobile.touchTilt",
-        "触摸设备默认不接管倾斜",
-        mobile1.interactive === false,
-        `interactive=${mobile1.interactive}, finePointer=${mobile1.finePointer}`,
-      );
-    }
-    const mobileCardRect = mobile1.cardRect;
-    await page.touch("touchStart", [{ x: mobileCardRect.cx, y: mobileCardRect.cy, id: 1 }]);
-    await page.touch("touchMove", [{ x: mobileCardRect.cx + 40, y: mobileCardRect.cy + 20, id: 1 }]);
-    await sleep(300);
-    const mobileTouch = await page.evaluate("window.__bcProbe()");
-    await page.touch("touchEnd", []);
     report.check(
-      "mobile.scrollAfterTouch",
-      "触摸操作后仍可滚动且无横向溢出",
-      mobileTouch.scrollW <= mobileTouch.innerW + 1,
-      `scrollWidth=${mobileTouch.scrollW}, innerWidth=${mobileTouch.innerW}`,
+      "mobile.touchDevice",
+      "触摸模拟识别为触屏并默认开启触摸倾斜",
+      mobile1.maxTouchPoints > 0 && mobile1.touchAttr === "true" && mobile1.interactive === true,
+      `maxTouchPoints=${mobile1.maxTouchPoints}, data-bc-touch=${mobile1.touchAttr}, interactive=${mobile1.interactive}`,
     );
+
+    /** 把卡面滚到视口中间，并重新取样（rect / scrollY 都在页面内实时计算）。 */
+    const centerCard = async () => {
+      await page.evaluate("document.querySelector('.bc-card').scrollIntoView({ block: 'center' })");
+      await sleep(220);
+      return page.evaluate("window.__bcProbe()");
+    };
+
+    // ① 轻点：不得被粘滞 hover 钉在最大倾角 / 点亮高光。
+    const tapBase = await centerCard();
+    await page.touch("touchStart", [{ x: tapBase.cardRect.cx, y: tapBase.cardRect.cy, id: 1 }]);
+    await page.touch("touchEnd", []);
+    await sleep(500);
+    const afterTap = await page.evaluate("window.__bcProbe()");
+    report.check(
+      "mobile.tapNoSticky",
+      "轻点卡面不会粘在最大倾角 / 触发高光",
+      Math.abs(afterTap.rotateX) <= 1 && Math.abs(afterTap.rotateY) <= 1 && (afterTap.cardOpacity ?? 0) <= 0.2,
+      `rotate=(${afterTap.rotateX}, ${afterTap.rotateY}), cardOpacity=${afterTap.cardOpacity}`,
+    );
+
+    // ② 长按后拖动：动态调整倾角，且该次手势不滚动页面；松开后回正。
+    await page.touch("touchStart", [{ x: afterTap.cardRect.cx, y: afterTap.cardRect.cy, id: 2 }]);
+    await sleep(260);
+    await page.touch("touchMove", [{ x: afterTap.cardRect.cx + 70, y: afterTap.cardRect.cy + 35, id: 2 }]);
+    await sleep(90);
+    await page.touch("touchMove", [{ x: afterTap.cardRect.cx + 140, y: afterTap.cardRect.cy + 70, id: 2 }]);
+    await sleep(280);
+    const engaged = await page.evaluate("window.__bcProbe()");
+    report.screenshots.push(await page.screenshot("mobile-touch-longpress.png"));
+    report.check(
+      "mobile.longPressTilt",
+      "长按后拖动会动态调整倾角",
+      engaged.touchTiltAttr === "true" && Math.max(Math.abs(engaged.rotateX), Math.abs(engaged.rotateY)) > 2.5,
+      `data-bc-touch-tilt=${engaged.touchTiltAttr}, rotate=(${engaged.rotateX}, ${engaged.rotateY})`,
+    );
+    report.check(
+      "mobile.longPressScrollLock",
+      "长按进入倾斜后该次手势不再滚动页面",
+      Math.abs(engaged.scrollY - afterTap.scrollY) <= 2,
+      `scrollY ${afterTap.scrollY} -> ${engaged.scrollY}`,
+    );
+    await page.touch("touchEnd", []);
+    await sleep(1100);
+    const afterRelease = await page.evaluate("window.__bcProbe()");
+    report.check(
+      "mobile.touchRelease",
+      "松开后倾角回正且状态属性复位",
+      Math.abs(afterRelease.rotateX) <= 1 && Math.abs(afterRelease.rotateY) <= 1 && afterRelease.touchTiltAttr === null,
+      `rotate=(${afterRelease.rotateX}, ${afterRelease.rotateY}), attr=${afterRelease.touchTiltAttr ?? "(无)"}`,
+    );
+
+    // ③ 快速上滑：不满足长按门槛 → 仍归页面滚动，卡面不倾斜（不干扰滚动）。
+    const swipeBase = await centerCard();
+    await page.touch("touchStart", [{ x: swipeBase.cardRect.cx, y: swipeBase.cardRect.cy, id: 3 }]);
+    await sleep(30);
+    await page.touch("touchMove", [{ x: swipeBase.cardRect.cx, y: swipeBase.cardRect.cy - 60, id: 3 }]);
+    await sleep(160);
+    await page.touch("touchEnd", []);
+    await sleep(400);
+    const afterSwipe = await page.evaluate("window.__bcProbe()");
+    report.check(
+      "mobile.quickSwipeScrolls",
+      "快速上滑仍滚动页面且卡面不倾斜",
+      afterSwipe.scrollY > swipeBase.scrollY + 30 &&
+        Math.abs(afterSwipe.rotateX) <= 1 &&
+        Math.abs(afterSwipe.rotateY) <= 1 &&
+        afterSwipe.scrollW <= afterSwipe.innerW + 1,
+      `scrollY ${swipeBase.scrollY} -> ${afterSwipe.scrollY}, rotate=(${afterSwipe.rotateX}, ${afterSwipe.rotateY}), ` +
+        `scrollWidth=${afterSwipe.scrollW}, innerWidth=${afterSwipe.innerW}`,
+    );
+
+    // ④ touchTilt: "off" → 完全不接管触摸：轻点 / 长按拖动都不倾斜，也不粘滞。
+    await page.open(`${url}?touchTilt=off`);
+    const offBase = await centerCard();
+    await page.touch("touchStart", [{ x: offBase.cardRect.cx, y: offBase.cardRect.cy, id: 4 }]);
+    await page.touch("touchEnd", []);
+    await sleep(500);
+    const offTap = await page.evaluate("window.__bcProbe()");
+    report.check(
+      "mobile.touchTiltOffNoSticky",
+      "touchTilt: off 时轻点也不会粘在最大倾角 / 触发高光",
+      offTap.interactive === false &&
+        Math.abs(offTap.rotateX) <= 1 &&
+        Math.abs(offTap.rotateY) <= 1 &&
+        (offTap.cardOpacity ?? 0) <= 0.2,
+      `interactive=${offTap.interactive}, rotate=(${offTap.rotateX}, ${offTap.rotateY}), cardOpacity=${offTap.cardOpacity}`,
+    );
+    await page.touch("touchStart", [{ x: offTap.cardRect.cx, y: offTap.cardRect.cy, id: 5 }]);
+    await sleep(260);
+    await page.touch("touchMove", [{ x: offTap.cardRect.cx + 82, y: offTap.cardRect.cy + 46, id: 5 }]);
+    await sleep(220);
+    const offDrag = await page.evaluate("window.__bcProbe()");
+    report.check(
+      "mobile.touchTiltOffNoDrag",
+      "touchTilt: off 时长按拖动不倾斜卡片",
+      Math.abs(offDrag.rotateX) <= 1 && Math.abs(offDrag.rotateY) <= 1 && offDrag.touchTiltAttr === null,
+      `rotate=(${offDrag.rotateX}, ${offDrag.rotateY}), attr=${offDrag.touchTiltAttr ?? "(无)"}`,
+    );
+    await page.touch("touchEnd", []);
+    report.screenshots.push(await page.screenshot("mobile-touchtilt-off.png"));
     report.screenshots.push(await page.screenshot("mobile-390.png"));
 
     // ---------------------------------------------------------------------
@@ -1346,6 +1438,21 @@ async function main() {
       }；库产物 ${libGlobalSelectors.length} 处${
         libGlobalSelectors.length ? `: ${libGlobalSelectors.slice(0, 5).join(", ")}` : ""
       }，扫描 ${builtCssFiles.length + 1} 个 CSS 文件`,
+    );
+    // 产物 CSS 会被压缩（属性选择器去引号、媒体查询去空格），正则需容忍这两种写法。
+    const touchGuard = /\[data-bc-touch=["']?true["']?\][^{]*:hover/;
+    const hoverNoneGuard = /@media\s*\(hover:\s*none\)[^{]*\{[^@]*:hover/;
+    report.check(
+      "styles.touchHoverGuard",
+      "产物 CSS 含触屏 hover 兜底复位与长按保护（防粘滞倾角）",
+      touchGuard.test(builtCss) &&
+        hoverNoneGuard.test(builtCss) &&
+        /-webkit-touch-callout:\s*none/.test(builtCss) &&
+        /\.bc-card img[^{]*\{[^}]*pointer-events:\s*none/.test(builtCss),
+      `data-bc-touch 复位=${touchGuard.test(builtCss)}, ` +
+        `hover:none 兜底=${hoverNoneGuard.test(builtCss)}, ` +
+        `touch-callout=${/-webkit-touch-callout:\s*none/.test(builtCss)}, ` +
+        `img 不接手手势=${/\.bc-card img[^{]*\{[^}]*pointer-events:\s*none/.test(builtCss)}`,
     );
     report.check(
       "runtime.consoleErrors",

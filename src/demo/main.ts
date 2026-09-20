@@ -13,6 +13,7 @@ import { createProductShowcase } from "../index.js";
 import type {
   BankCardEffect,
   BankCardSurface,
+  BankCardTouchTilt,
   ProductData,
   ProductShowcaseInstance,
   ProductStock,
@@ -29,6 +30,7 @@ interface DemoState {
   productId: string;
   effect: BankCardEffect;
   surface: BankCardSurface;
+  touchTilt: BankCardTouchTilt;
   maxTilt: number;
   stock: DemoStockChoice;
   mounted: boolean;
@@ -48,10 +50,20 @@ const panelHost = mustQuery("#bc-demo-panel");
 const statusList = mustQuery("#bc-demo-status");
 const feedbackLine = mustQuery("#bc-demo-feedback");
 
+/**
+ * 允许用 `?touchTilt=off|on` 覆盖触屏倾斜策略（Demo 专用）：
+ * 便于在真机 / 验收脚本里对比「长按拖动倾斜」与「完全不接管触摸」两种行为。
+ */
+function touchTiltFromUrl(): BankCardTouchTilt {
+  const value = new URLSearchParams(window.location.search).get("touchTilt");
+  return value === "off" ? "off" : "on";
+}
+
 const state: DemoState = {
   productId: DEFAULT_PRODUCT_ID,
   effect: findProduct(DEFAULT_PRODUCT_ID).effect ?? "normal",
   surface: "flat",
+  touchTilt: touchTiltFromUrl(),
   maxTilt: DEFAULT_MAX_TILT,
   stock: "product-default",
   mounted: false,
@@ -103,6 +115,7 @@ function renderStatus(): void {
   statusValue("当前效果").textContent = state.effect;
   statusValue("当前质感").textContent = state.surface;
   statusValue("当前倾角").textContent = `${state.maxTilt}°`;
+  statusValue("触摸倾斜").textContent = state.touchTilt === "on" ? "on（长按后拖动可倾斜）" : "off（不接管触摸）";
   statusValue("当前卡面").textContent = appliedFileName(product);
   statusValue("挂载状态").textContent = showcase ? "已挂载" : "已卸载（destroy）";
 }
@@ -146,7 +159,7 @@ function setMounted(next: boolean): void {
   if (next) {
     showcase = createProductShowcase({
       product: currentProduct(),
-      card: { maxTilt: state.maxTilt, surface: state.surface },
+      card: { maxTilt: state.maxTilt, surface: state.surface, touchTilt: state.touchTilt },
       onAction: handleAction,
     });
     showcase.mount(host);

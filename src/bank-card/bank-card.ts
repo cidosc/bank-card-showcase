@@ -19,7 +19,15 @@ import type {
   BankCardSurface,
   ResolvedBankCardOptions,
 } from "../types.js";
-import { attachPressFeedback, clampPressScale, isFinePointer, prefersReducedMotion, watchReducedMotion } from "./pointer-feedback.js";
+import {
+  attachPressFeedback,
+  attachTouchTilt,
+  clampPressScale,
+  hasTouchInput,
+  isFinePointer,
+  prefersReducedMotion,
+  watchReducedMotion,
+} from "./pointer-feedback.js";
 
 const DEFAULT_MAX_TILT = 7;
 const MAX_TILT_LIMIT = 20;
@@ -73,7 +81,8 @@ function normalizeBankCardOptions(input: BankCardOptions): ResolvedBankCardOptio
     surface: input.surface === "physical" ? "physical" : DEFAULT_SURFACE,
     pressScale: clampPressScale(input.pressScale ?? DEFAULT_PRESS_SCALE),
     dragTilt: input.dragTilt ?? true,
-    touchTilt: input.touchTilt === "on" ? "on" : "off",
+    // 触屏默认开启「长按后拖动倾斜」（快速滑动仍归页面滚动，见 pointer-feedback.ts）。
+    touchTilt: input.touchTilt === "off" ? "off" : "on",
     aspectRatio: clampNumber(input.aspectRatio, MIN_ASPECT_RATIO, MAX_ASPECT_RATIO, DEFAULT_ASPECT_RATIO),
     respectReducedMotion: input.respectReducedMotion ?? true,
     imageFit: input.imageFit === "cover" ? "cover" : "contain",
@@ -119,6 +128,7 @@ export function createBankCard(input: BankCardOptions): BankCardInstance {
   let destroyed = false;
   let card: HoloCard | null = null;
   let disposePress: (() => void) | null = null;
+  let disposeTouch: (() => void) | null = null;
   let appliedClassNames: string[] = [];
 
   const element = document.createElement("div");
@@ -150,6 +160,9 @@ export function createBankCard(input: BankCardOptions): BankCardInstance {
   function syncStateAttributes(): void {
     element.dataset.bcReducedMotion = reducedMotionActive ? "true" : "false";
     element.dataset.bcPress = options.pressScale >= 1 ? "off" : "on";
+    // 触屏专用样式（非交互模式下的 hover 兜底复位）依赖该属性，
+    // 不用媒体查询也能在触摸模拟 / 混合设备上稳定生效。
+    element.dataset.bcTouch = hasTouchInput() ? "true" : "false";
   }
 
   function visualOptions(): VisualOptions {
@@ -249,6 +262,41 @@ export function createBankCard(input: BankCardOptions): BankCardInstance {
     });
   }
 
+  /**
+   * 触屏倾斜：长按卡面进入拖动观测（快滑不动卡面、仍可滚动页面）。
+   * 关闭条件：`interactive: false` / `touchTilt: "off"` / `dragTilt: false` / 减少动效。
+   */
+  function setupTouchTilt(): void {
+    disposeTouch?.();
+    disposeTouch = null;
+    element.removeAttribute("data-bc-touch-tilt");
+    const needsTouch =
+      effectiveInteractive && options.touchTilt === "on" && options.dragTilt !== false && !reducedMotionActive;
+    if (!needsTouch) {
+      return;
+    }
+    disposeTouch = attachTouchTilt(element, {
+      enabled: () => !destroyed && !reducedMotionActive,
+      onEngageChange: (engaged) => {
+        // 进入长按倾斜时给一个轻微按压缩放作为“已进入拖动”的反馈；退出时复位。
+        // （鼠标按压反馈与触摸互斥，直接写同一个 `--bc-press` 即可。）
+        if (engaged && options.pressScale < 1) {
+          element.style.setProperty("--bc-press", String(options.pressScale));
+          element.setAttribute("data-bc-dragging", "true");
+        } else {
+          element.style.setProperty("--bc-press", "1");
+          element.removeAttribute("data-bc-dragging");
+        }
+      },
+    });
+  }
+
+  /** 鼠标按压 + 触屏倾斜共用一套重建入口，保证监听器不会重复挂载。 */
+  function setupPointerFeedback(): void {
+    setupPressFeedback();
+    setupTouchTilt();
+  }
+
   function updateImageElement(): void {
     if (!card) {
       return;
@@ -270,7 +318,7 @@ export function createBankCard(input: BankCardOptions): BankCardInstance {
     const nextEffective = computeEffectiveInteractive(options, rawReducedMotion);
     reducedMotionActive = nextReduced;
     syncStateAttributes();
-    setupPressFeedback();
+    setupPointerFeedback();
     if (nextEffective !== effectiveInteractive) {
       effectiveInteractive = nextEffective;
       rebuildCard();
@@ -340,11 +388,12 @@ export function createBankCard(input: BankCardOptions): BankCardInstance {
     syncStateAttributes();
 
     if (
+      needRebuild ||
       options.pressScale !== previous.pressScale ||
       options.dragTilt !== previous.dragTilt ||
       reducedMotionActive !== previousReducedMotion
     ) {
-      setupPressFeedback();
+      setupPointerFeedback();
     }
 
     if (needRebuild) {
@@ -372,6 +421,8 @@ export function createBankCard(input: BankCardOptions): BankCardInstance {
     destroyed = true;
     disposePress?.();
     disposePress = null;
+    disposeTouch?.();
+    disposeTouch = null;
     stopWatchingReducedMotion();
     if (card) {
       card.destroy();
@@ -381,7 +432,7 @@ export function createBankCard(input: BankCardOptions): BankCardInstance {
   }
 
   rebuildCard();
-  setupPressFeedback();
+  setupPointerFeedback();
 
   const instance: BankCardInstance = {
     get element(): HTMLElement {

@@ -84,7 +84,7 @@ src/styles/product-showcase.css
 | `intensity` | `1` | 夹紧 `0..1` |
 | `pressScale` | `0.98` | 夹紧 `0.9..1`；`1` = 关闭反馈 |
 | `dragTilt` | `true` | |
-| `touchTilt` | `"off"` | |
+| `touchTilt` | `"on"` | 见 §7.15（触屏长按后拖动；`off` 可完全不接管触摸） |
 | `aspectRatio` | `1.586` | 夹紧 `1..3`；传给底层的是 `1 / aspectRatio` |
 | `respectReducedMotion` | `true` | |
 | `imageFit` | `"contain"` | 完整显示，不裁切 |
@@ -238,3 +238,33 @@ createHoloCard({
     由 `tools/make-provided-card.py` 统一生成（该脚本同时支持「主体抠图 + 背景」的合成型
     与「整幅卡面构图」的整幅型；缺源图时提示并跳过）。效果对照页 ① 亦改用该素材，
     曝光回归仍为 4 张卡面 × 4 效果 = 16 项。
+
+15. **触控端（移动端）适配与粘滞 hover 修复**（用户实测反馈）：
+
+    - **现象**：真机 / 触屏上轻点卡面后，卡片被钉在某个大倾角并触发闪卡高光，只有点其它
+      非卡面区域才恢复；长按滑动卡面没有任何动态交互。
+    - **根因**：触屏上默认 `touchTilt: "off"` → 底层不进入交互模式（无 `holo-card--interactive`），
+      于是走纯 CSS 兜底 `.holo-card:not(.holo-card--interactive):hover`（固定
+      `--rotate-x: 7deg / --rotate-y: -19deg / --card-scale: 1.1 / --card-opacity: 1`）。
+      触屏浏览器在 tap 后会保持 `:hover`（粘滞），不再有 `pointermove`，所以既卡住又不可交互。
+    - **修复 / 适配**（不改底层源码）：
+      1. `touchTilt` 默认改为 `"on"`，触屏改用底层真实的指针交互；
+      2. 新增 `attachTouchTilt()`（`src/bank-card/pointer-feedback.ts`）：
+         **长按门槛**（`TOUCH_LONG_PRESS_MS = 160ms`、`TOUCH_MOVE_TOLERANCE_PX = 10px`）。
+         未进入倾斜前在**捕获阶段**拦截 `pointermove`（滚动时不拖动卡面）；进入后对 `touchmove`
+         调用 `preventDefault()` 冻结该次手势的滚动（任意方向跟手），松开后底层弹簧回正。
+         状态属性 `data-bc-touch-tilt`；`pointerup / pointercancel / blur / visibilitychange` 均会退出。
+      3. 非交互模式的 hover 兜底在触屏上复位为静止值：
+         `.bc-card[data-bc-touch="true"] .bc-card__holo:not(.holo-card--interactive):hover`
+         （另加 `@media (hover: none), (any-pointer: coarse)` 同类兜底），
+         根元素新增 `data-bc-touch` 状态属性（由 `navigator.maxTouchPoints` / `any-pointer: coarse` 判定）。
+      4. 触屏长按不弹系统菜单 / 不抢手势：`.bc-card` 加 `-webkit-touch-callout: none`，
+         卡面 `img` 加 `pointer-events: none`（目标落在底层 `rotator` 上）。
+      5. 触屏长按进入倾斜时用 `--bc-press` 给一次轻微按压缩放反馈；鼠标按压反馈保持只响应 mouse。
+      6. Demo 新增 `?touchTilt=off|on` 查询参数与状态行，便于真机 / 验收脚本对比两种行为。
+    - **职责边界不变**：`interactive: false` / `touchTilt: "off"` / `dragTilt: false` / 减少动效
+      时均不进入触屏倾斜；纵向滚动仍由 `touch-action: pan-y` 保留。
+    - **回归覆盖**：单测 9 项（适配器纯逻辑 + 默认值/属性 + CSS 约束）；
+      `tools/acceptance.mjs` 8 项（`mobile.touchDevice / tapNoSticky / longPressTilt /
+      longPressScrollLock / touchRelease / quickSwipeScrolls / touchTiltOffNoSticky /
+      touchTiltOffNoDrag`）+ 1 项产物 CSS 检查 `styles.touchHoverGuard`。
